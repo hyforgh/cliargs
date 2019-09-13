@@ -1,0 +1,5 @@
+aux_source_directory(. example_source_list)
+foreach(example_source ${example_source_list})
+    get_filename_component(example_name ${example_source} NAME_WE)
+    cliarg_add_inner_bin_target(${example_name})
+endforeach()
