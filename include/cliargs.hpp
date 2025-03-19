@@ -22,8 +22,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-#ifndef __HY_CLIARGS_HPP__
-#define __HY_CLIARGS_HPP__
+#ifndef __CLIARGS_HPP__
+#define __CLIARGS_HPP__
 
 #include <stdint.h>
 #include <stdlib.h>
@@ -505,7 +505,7 @@ public:
             } else {
                 ss << _at_least;
             }
-            ss << " value(s) but got " << _argc;
+            ss << " value(s), but got " << _argc;
             _err_list.emplace_back(ss.str());
         }
         return _argi < _argc ? _argi : _argc;
@@ -1088,11 +1088,11 @@ protected:
     void set_context(void *context) {
         _context = context;
     }
-    void set_appear_count(int at_least, int at_most = -1) {
+    void set_dim_0_limit(int at_least, int at_most = -1) {
         _dim_0_at_least = (at_least >= 0 ? at_least : _dim_0_at_least);
         _dim_0_at_most = (at_most >= 0 ? at_most : _dim_0_at_most);
     }
-    void set_appear_width(int at_least, int at_most = -1) {
+    void set_dim_1_limit(int at_least, int at_most = -1) {
         _dim_1_at_least = (at_least >= 0 ? at_least : _dim_1_at_least);
         _dim_1_at_most = (at_most >= 0 ? at_most : _dim_1_at_most);
     }
@@ -1223,7 +1223,7 @@ struct __get_cli_atom_type : public ____get_cli_atom_type<T, __is_cli_scalar<T>:
 
 #define __ArgAttr_required()                                                            \
     std::shared_ptr<ArgAttr<T>> required() {                                            \
-        __ArgAttrT<T>::set_appear_count(1, -1);                                         \
+        __ArgAttrT<T>::set_dim_0_limit(1, -1);                                          \
         return std::static_pointer_cast<ArgAttr<T>>(__ArgAttrT<T>::shared_from_this()); \
     }
 #define __ArgAttr_positional()                                                          \
@@ -1242,7 +1242,7 @@ struct __get_cli_atom_type : public ____get_cli_atom_type<T, __is_cli_scalar<T>:
         __ArgAttrT<T>::set_implicit_value(std::move(value));                            \
         if (__is_cli_scalar<typename __ArgAttrT<T>::Tg>::value                          \
                 || __get_cli_atom_type<typename __ArgAttrT<T>::Tg>::value == __AT_STRUCT) { \
-            __ArgAttrT<T>::set_appear_width(0);                                         \
+            __ArgAttrT<T>::set_dim_1_limit(0);                                          \
         }                                                                               \
         return std::static_pointer_cast<ArgAttr<T>>(__ArgAttrT<T>::shared_from_this()); \
     }
@@ -1269,13 +1269,13 @@ struct __get_cli_atom_type : public ____get_cli_atom_type<T, __is_cli_scalar<T>:
         return std::static_pointer_cast<ArgAttr<T>>(                                    \
             __ArgAttrT<T>::shared_from_this());                                         \
     }
-#define __ArgAttr_line_width()                                                           \
-    std::shared_ptr<ArgAttr<T>> line_width(int fixed_count) {                            \
-        __ArgAttrT<T>::set_appear_count(fixed_count, fixed_count);                      \
+#define __ArgAttr_line_width()                                                          \
+    std::shared_ptr<ArgAttr<T>> line_width(int fixed_count) {                           \
+        __ArgAttrT<T>::set_dim_0_limit(fixed_count, fixed_count);                       \
         return std::static_pointer_cast<ArgAttr<T>>(__ArgAttrT<T>::shared_from_this()); \
     }                                                                                   \
-    std::shared_ptr<ArgAttr<T>> line_width(int at_least, int at_most) {                  \
-        __ArgAttrT<T>::set_appear_count(at_least, at_most);                             \
+    std::shared_ptr<ArgAttr<T>> line_width(int at_least, int at_most) {                 \
+        __ArgAttrT<T>::set_dim_0_limit(at_least, at_most);                              \
         return std::static_pointer_cast<ArgAttr<T>>(__ArgAttrT<T>::shared_from_this()); \
     }
 #define __ArgAttr_context()                                                             \
@@ -1412,7 +1412,7 @@ public:
     __ArgAttrGT() : __ArgAttrAT<T, __AT_TUPLE>() {
     }
     std::shared_ptr<ArgAttr<T>> line_width(int at_least) {
-        __ArgAttrT<T>::set_appear_width(at_least);
+        __ArgAttrT<T>::set_dim_1_limit(at_least);
         return std::static_pointer_cast<ArgAttr<T>>(__ArgAttrT<T>::shared_from_this());
     }
 };
@@ -1423,11 +1423,11 @@ public:
     __ArgAttrGT() : __ArgAttrAT<T, __get_cli_atom_type<Ta>::value>() {
     }
     std::shared_ptr<ArgAttr<T>> line_width(int fixed_count) {
-        __ArgAttrT<T>::set_appear_width(fixed_count, fixed_count);
+        __ArgAttrT<T>::set_dim_1_limit(fixed_count, fixed_count);
         return std::static_pointer_cast<ArgAttr<T>>(__ArgAttrT<T>::shared_from_this());
     }
     std::shared_ptr<ArgAttr<T>> line_width(int at_least, int at_most) {
-        __ArgAttrT<T>::set_appear_width(at_least, at_most);
+        __ArgAttrT<T>::set_dim_1_limit(at_least, at_most);
         return std::static_pointer_cast<ArgAttr<T>>(__ArgAttrT<T>::shared_from_this());
     }
 };
@@ -1441,7 +1441,7 @@ template <>
 class __ArgAttrLT<bool, bool, bool> : public __ArgAttrT<bool> {
 public:
     __ArgAttrLT() : __ArgAttrT<bool>() {
-        __ArgAttrT<bool>::set_appear_width(0, 1);
+        __ArgAttrT<bool>::set_dim_1_limit(0, 1);
         __ArgAttrT<bool>::_has_implicit_value = true;
         __ArgAttrT<bool>::_implicit_value = true;
     }
@@ -1462,11 +1462,11 @@ public:
     __ArgAttrLT() : __ArgAttrGT<T, Tg, Ta>() {}
     __ArgAttr_implicit_value()
     std::shared_ptr<ArgAttr<T>> data_count(int fixed_count) {
-        __ArgAttrT<T>::set_appear_count(fixed_count, fixed_count);
+        __ArgAttrT<T>::set_dim_0_limit(fixed_count, fixed_count);
         return std::static_pointer_cast<ArgAttr<T>>(__ArgAttrT<T>::shared_from_this());
     }
     std::shared_ptr<ArgAttr<T>> data_count(int at_least, int at_most) {
-        __ArgAttrT<T>::set_appear_count(at_least, at_most);
+        __ArgAttrT<T>::set_dim_0_limit(at_least, at_most);
         return std::static_pointer_cast<ArgAttr<T>>(__ArgAttrT<T>::shared_from_this());
     }
 };
@@ -1479,13 +1479,13 @@ public:
     }
     __ArgAttr_implicit_value()
     std::shared_ptr<ArgAttr<T>> data_count(int fixed_count) {
-        __ArgAttrT<T>::set_appear_count(fixed_count, fixed_count);
-        __ArgAttrT<T>::set_appear_width(1, fixed_count);
+        __ArgAttrT<T>::set_dim_0_limit(fixed_count, fixed_count);
+        __ArgAttrT<T>::set_dim_1_limit(1, fixed_count);
         return std::static_pointer_cast<ArgAttr<T>>(__ArgAttrT<T>::shared_from_this());
     }
     std::shared_ptr<ArgAttr<T>> data_count(int at_least, int at_most) {
-        __ArgAttrT<T>::set_appear_count(at_least, at_most);
-        __ArgAttrT<T>::set_appear_width(1, at_most);
+        __ArgAttrT<T>::set_dim_0_limit(at_least, at_most);
+        __ArgAttrT<T>::set_dim_1_limit(1, at_most);
         return std::static_pointer_cast<ArgAttr<T>>(__ArgAttrT<T>::shared_from_this());
     }
 };
@@ -2041,13 +2041,16 @@ struct ____VectorParser<Ta, Ta> {
                 break;
             }
         }
+        if (value.size() >= at_most) {
+            return i;
+        }
         if (n < at_least) {
             std::stringstream ss;
             ss << "expects " << at_least;
             if (at_least < at_most) {
                 ss << " ~ " << at_most;
             }
-            ss << " value(s)" << ", but got " << n;
+            ss << " value(s), but got " << n;
             err_list.emplace_back(ss.str());
         } else if (get_implicit_value) {
             auto &implicit_value = get_implicit_value();
@@ -2215,7 +2218,7 @@ std::string __ArgDataT<T>::finish() {
             if (dim_0_at_least < dim_0_at_most) {
                 ss << " ~ " << dim_0_at_most;
             }
-            ss << " appearance(s)" << ", but got " << _appear_count;
+            ss << " appearance(s), but got " << _appear_count;
             return ss.str();
         }
     } else {
@@ -2224,7 +2227,7 @@ std::string __ArgDataT<T>::finish() {
             if (dim_0_at_least < dim_0_at_most) {
                 ss << " ~ " << dim_0_at_most;
             }
-            ss << " value(s)" << ", but got " << _data_count;
+            ss << " value(s), but got " << _data_count;
             return ss.str();
         }
     }
@@ -2380,4 +2383,4 @@ Result Parser::parse(int argc, char *argv[]) {
 
 } // cliargs
 
-#endif // __HY_CLIARGS_HPP__
+#endif // __CLIARGS_HPP__

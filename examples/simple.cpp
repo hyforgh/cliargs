@@ -8,7 +8,7 @@ int main(int argc, char *argv[]) {
         ('h', "help", "Print this message and exit") // a bool argument
         ('i', "int", "An interger", cliargs::value<int>()->default_value(-1))
         ('s', "string", "A string", cliargs::value<std::string>()->default_value("/dev/mem"))
-        ('v', "vector", "An int vector", cliargs::value<std::vector<float>>())
+        ('v', "vector", "An int vector", cliargs::value<std::vector<float>>()->data_count(1, 2))
         ;
     // Parse
     auto result = parser.parse(argc, argv);
