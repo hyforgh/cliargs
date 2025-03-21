@@ -51,6 +51,19 @@ namespace cliargs {
 #define CLIARGS_VERSION_MINOR 0
 #define CLIARGS_VERSION_PATCH 0
 
+#ifndef CLIARGS_NO_EXCEPTION
+class bad_cast : public std::bad_cast {
+public:
+    explicit bad_cast(std::string what) : std::bad_cast(), _what(std::move(what)) {
+    }
+    const char *what() const noexcept override {
+        return _what.c_str();
+    }
+private:
+    const std::string _what;
+};
+#endif // CLIARGS_NO_EXCEPTION
+
 class ArgParser {
 public:
     virtual ~ArgParser() {}
@@ -213,20 +226,6 @@ template <typename T>
 struct type_traits<std::unordered_set<T>> {
     static const std::string &name();
 };
-template <std::size_t N, typename... Targs>
-struct ____cli_tuple {
-    static const std::string &name() {
-        static const std::string s_name = ____cli_tuple<N - 1, Targs...>::name() + ", "
-            + type_traits<typename std::tuple_element<N - 1, std::tuple<Targs...>>::type>::name();
-        return s_name;
-    }
-};
-template <typename... Targs>
-struct ____cli_tuple<1, Targs...> {
-    static const std::string &name() {
-        return type_traits<typename std::tuple_element<0, std::tuple<Targs...>>::type>::name();
-    }
-};
 template <typename... Targs>
 struct type_traits<std::tuple<Targs...>> {
     static const std::string &name();
@@ -267,10 +266,24 @@ const std::string &type_traits<std::unordered_set<T>>::name() {
         + type_traits<T>::name() + ">";
     return s_name;
 }
+template <std::size_t N, typename... Targs>
+struct ____tuple_traits {
+    static const std::string &name() {
+        static const std::string s_name = ____tuple_traits<N - 1, Targs...>::name() + ", "
+            + type_traits<typename std::tuple_element<N - 1, std::tuple<Targs...>>::type>::name();
+        return s_name;
+    }
+};
+template <typename... Targs>
+struct ____tuple_traits<1, Targs...> {
+    static const std::string &name() {
+        return type_traits<typename std::tuple_element<0, std::tuple<Targs...>>::type>::name();
+    }
+};
 template <typename... Targs>
 const std::string &type_traits<std::tuple<Targs...>>::name() {
     static const std::string s_name = std::string("tuple<")
-        + ____cli_tuple<sizeof ...(Targs), Targs...>::name() + ">";
+        + ____tuple_traits<sizeof ...(Targs), Targs...>::name() + ">";
     return s_name;
 }
 
@@ -1284,7 +1297,7 @@ struct __get_cli_atom_type : public ____get_cli_atom_type<T, __is_cli_scalar<T>:
         return std::static_pointer_cast<ArgAttr<T>>(__ArgAttrT<T>::shared_from_this()); \
     }
 
-template <typename T, __AtomType ADTC>
+template <typename T, __AtomType AT>
 class __ArgAttrAT;
 template <typename T>
 class __ArgAttrAT<T, __AT_VALUE> : public __ArgAttrT<T> {
@@ -1540,19 +1553,6 @@ private:
     std::string _desc;
     std::shared_ptr<__ArgAttrI> _attr;
 }; // ArgDesc
-
-#ifndef CLIARGS_NO_EXCEPTION
-class bad_cast : public std::bad_cast {
-public:
-    bad_cast(const std::string &what) : std::bad_cast(), _what(what) {
-    }
-    const char *what() const noexcept override {
-        return _what.c_str();
-    }
-private:
-    const std::string _what;
-};
-#endif // CLIARGS_NO_EXCEPTION
 
 class ArgData {
 public:

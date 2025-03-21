@@ -106,8 +106,8 @@ void __parse_by_parser(MyStruct &obj, cliargs::ArgParser &parser, const std::str
     if (parser.assign(obj.name, "name")) { // MyStruct::name required a string value
         parser.check(!obj.name.empty(), "invalid name: empty");
     }
-    parser.set_optional(); // the followwing member is optional
     parser.assign(obj.gain, "gain"); // MyStruct::gain required an uint64 value
+    parser.set_optional(); // the followwing member is optional
     parser.assign(obj.size, "size", (long)0); // specify a default value for optional member
     parser.domain_end();
 }
