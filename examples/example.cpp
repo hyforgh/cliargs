@@ -21,6 +21,9 @@ void __parse_by_parser(MyStruct &obj, cliargs::ArgParser &parser, const std::str
     parser.domain_end();
 }
 
+int g_value_default = 0;
+const int g_value_implicit = -1;
+
 int main(int argc, char *argv[]) {
     //  Create a 'cliargs::Parser' instance
     cliargs::Parser parser("MyProgram", "One line description of MyProgram");
@@ -29,7 +32,8 @@ int main(int argc, char *argv[]) {
         ('h', "help", "Print this message and exit") // a bool argument
         ('v', "value", "An interger",
             cliargs::value<int>()
-            ->default_value(0)
+            ->default_value(g_value_default)
+            ->implicit_value(g_value_implicit)
             ->choices({-1, 0})->ranges({{10, 20}})
             )
         ('s', "string", "A string",
@@ -60,13 +64,9 @@ int main(int argc, char *argv[]) {
         ;
     // Parse
     auto result = parser.parse(argc, argv);
-    if (parser.error()) {
+    if (parser.error() || result["help"].as<bool>()) {
         parser.print_help();
-        return -1;
-    }
-    if (result["help"].as<bool>()) {
-        parser.print_help();
-        return 0;
+        return parser.error() ? -1 : 0;
     }
     // Use result
     std::cout << "value: " << cliargs::to_string(result["value"].as<int>()) << std::endl;
