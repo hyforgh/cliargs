@@ -599,6 +599,7 @@ private:
     virtual bool has_constraint() const = 0;
     virtual std::string get_constraint_desc() const = 0;
     virtual std::string get_data_desc() const = 0;
+    virtual bool is_hidden() const = 0;
 }; // __ArgAttrI
 
 template <typename>
@@ -959,6 +960,7 @@ public:
             , _dim_1_at_least(1)
             , _dim_1_at_most(__get_max_capacity<Tg, Ta>::value)
             , _context(nullptr)
+            , _is_hidden(false)
     {
         static_assert(std::is_same<Ta, typename __get_cli_value_type<Ta>::type>::value
             , "Too many nested levels of containers");
@@ -1049,6 +1051,9 @@ protected:
     void *get_context() const {
         return _context;
     }
+    bool is_hidden() const override {
+        return _is_hidden;
+    }
 
 private:
     unsigned dim_0_at_least() const {
@@ -1123,6 +1128,9 @@ protected:
         _match_examine = std::move(func);
         _match_examine_desc = std::move(desc);
     }
+    void set_hide() {
+        _is_hidden = true;
+    }
 protected:
     bool _is_positional;
     bool _has_default_value;
@@ -1132,6 +1140,7 @@ protected:
     unsigned _dim_1_at_least;
     unsigned _dim_1_at_most;
     void *_context;
+    bool _is_hidden;
     T _default_value;
     T_implicit_value _implicit_value;
     std::function<bool (const Ta &)> _match_choices;
@@ -1297,6 +1306,11 @@ struct __get_cli_atom_type : public ____get_cli_atom_type<T, __is_cli_scalar<T>:
 #define __ArgAttr_context()                                                             \
     std::shared_ptr<ArgAttr<T>> context(void *ctx) {                                    \
         __ArgAttrT<T>::set_context(ctx);                                                \
+        return std::static_pointer_cast<ArgAttr<T>>(__ArgAttrT<T>::shared_from_this()); \
+    }
+#define __ArgAttr_hide()                                                                \
+    std::shared_ptr<ArgAttr<T>> hide() {                                                \
+        __ArgAttrT<T>::set_hide();                                                      \
         return std::static_pointer_cast<ArgAttr<T>>(__ArgAttrT<T>::shared_from_this()); \
     }
 
@@ -1514,6 +1528,8 @@ template <typename T>
 class ArgAttr : public __ArgAttrLT<T
         , typename __get_cli_value_type<T>::type
         , typename __get_cli_value_type<typename __get_cli_value_type<T>::type>::type> {
+public:
+    __ArgAttr_hide()
 }; // ArgAttr
 
 #undef __ArgAttr_required
@@ -1523,6 +1539,7 @@ class ArgAttr : public __ArgAttrLT<T
 #undef __ArgAttr_examine
 #undef __ArgAttr_line_width
 #undef __ArgAttr_context
+#undef __ArgAttr_hide
 
 template <typename T>
 std::shared_ptr<ArgAttr<T>> value() {
@@ -1798,6 +1815,10 @@ void Parser::print_help(const std::string &indent, std::ostream &os) const {
         }
     };
     for (auto &it : _arg_desc_list) {
+        auto attr = it.attr();
+        if (attr->is_hidden()) {
+            continue;
+        }
         os << indent << indent_inner
             << std::right << std::setw(sname_width) << it.flag();
         if (it.flag().empty()) {
@@ -1806,7 +1827,6 @@ void Parser::print_help(const std::string &indent, std::ostream &os) const {
             os << name_delimiter;
         }
         os << std::left << std::setw(lname_width) << it.name();
-        auto attr = it.attr();
         print_desc(it.desc());
         if (_concise_help) {
             os << "\n";

@@ -253,12 +253,13 @@ The attribute interface includes "[common attribute interface](#common attribute
 > For detailed examples of combined usage, please refer to the unit test
 
 #### 3.1 General attribute interface
-|attribue |
+|attribue     |
 |-------------|
-|required |
-|positional |
+|required     |
+|positional   |
 |default_value|
-|examine |
+|examine      |
+|hide         |
 
 #### 3.2 Metadata type-specific attribute interface
 |meta type|attributes|

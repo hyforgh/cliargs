@@ -259,6 +259,7 @@ parser.add_args()
 |positional   |
 |default_value|
 |examine      |
+|hide         |
 
 #### 3.2 元数据类型特有属性接口
 |meta type|attributes|
