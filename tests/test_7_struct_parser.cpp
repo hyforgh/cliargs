@@ -90,13 +90,20 @@ TEST_CASE("struct_parser") {
         CHECK(arg_value.as<MyStruct>() == MyStruct{"name", 5.12, 2});
     }
 
-    SECTION("single-examine-faield") {
-        CLI_TEST_DEFINE_NORM_ARG((MyStruct), (
-                ->examine([](MyStruct &v) -> bool { return !v.name.empty(); }, "name not empty"))
+    SECTION("single-parse-faield") {
+        CLI_TEST_DEFINE_NORM_ARG((MyStruct), ()
             , "--arg_name", "", "5.12", "2");
         CHECK(parser.error());
+        CHECK(cli_error_like(parser.error_details(), ".*an empty name"));
+    }
+
+    SECTION("single-examine-faield") {
+        CLI_TEST_DEFINE_NORM_ARG((MyStruct), (
+                ->examine([](MyStruct &v) -> bool { return v.name.length() > 2; }, "name length > 2"))
+            , "--arg_name", "ha", "5.12", "2");
+        CHECK(parser.error());
         CHECK(cli_error_like(parser.error_details(),
-            ".*should meet constraint: 'name not empty'"));
+            ".*should meet constraint: 'name length > 2'"));
     }
 
     SECTION("vector-full") {

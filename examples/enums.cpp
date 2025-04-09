@@ -60,13 +60,9 @@ int main(int argc, char *argv[]) {
         ;
     // Parse
     auto result = parser.parse(argc, argv);
-    if (parser.error()) {
+    if (parser.error() || result["help"].as<bool>()) {
         parser.print_help();
-        return -1;
-    }
-    if (result["help"].as<bool>()) {
-        parser.print_help();
-        return 0;
+        return parser.error() ? -1 : 0;
     }
     // Use result
     std::cout << "str: " << cliargs::to_string(result["str"].as<std::string>()) << std::endl;

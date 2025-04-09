@@ -48,7 +48,7 @@ SOFTWARE.
 namespace cliargs {
 
 #define CLIARGS_VERSION_MAJOR 1
-#define CLIARGS_VERSION_MINOR 0
+#define CLIARGS_VERSION_MINOR 1
 #define CLIARGS_VERSION_PATCH 0
 
 #ifndef CLIARGS_NO_EXCEPTION
@@ -357,6 +357,8 @@ const char *____parse_integer(Tv &v, char *psz, Tconvert_method convert_method) 
     char *pend = nullptr;
     if (strncmp(psz, "0x", 2) == 0 || strncmp(psz, "0X", 2) == 0) {
         v = convert_method(psz, &pend, 16);
+    } else if (strncmp(psz, "0b", 2) == 0 || strncmp(psz, "0B", 2) == 0) {
+        v = convert_method(psz, &pend, 2);
     } else {
         v = convert_method(psz, &pend, 10);
     }
@@ -1245,21 +1247,21 @@ struct __get_cli_atom_type : public ____get_cli_atom_type<T, __is_cli_scalar<T>:
         return std::static_pointer_cast<ArgAttr<T>>(__ArgAttrT<T>::shared_from_this()); \
     }
 #define __ArgAttr_default_value()                                                       \
-    std::shared_ptr<ArgAttr<T>> default_value(T &&value) {                              \
+    std::shared_ptr<ArgAttr<T>> default_value(T value) {                                \
         __ArgAttrT<T>::set_default_value(std::move(value));                             \
         return std::static_pointer_cast<ArgAttr<T>>(__ArgAttrT<T>::shared_from_this()); \
     }
 #define __ArgAttr_implicit_value()                                                      \
     std::shared_ptr<ArgAttr<T>> implicit_value(                                         \
-            typename __ArgAttrT<T>::T_implicit_value &&value) {                         \
+            typename __ArgAttrT<T>::T_implicit_value value) {                           \
         __ArgAttrT<T>::set_implicit_value(std::move(value));                            \
-        if (__is_cli_scalar<typename __ArgAttrT<T>::Tg>::value                          \
-                || __get_cli_atom_type<typename __ArgAttrT<T>::Tg>::value == __AT_STRUCT) { \
+        if (__get_cli_atom_type<typename __ArgAttrT<T>::Tg>::value == __AT_STRUCT       \
+                || __is_cli_scalar<typename __ArgAttrT<T>::Tg>::value) {                \
             __ArgAttrT<T>::set_dim_1_limit(0);                                          \
         }                                                                               \
         return std::static_pointer_cast<ArgAttr<T>>(__ArgAttrT<T>::shared_from_this()); \
     }
-#define __ArgAttr_condition()                                                           \
+#define __ArgAttr_examine()                                                             \
     std::shared_ptr<ArgAttr<T>> examine(                                                \
             std::function<bool (Ta &)> func, std::string desc = "") {                   \
         __ArgAttrT<T>::set_match_examine(                                               \
@@ -1277,7 +1279,8 @@ struct __get_cli_atom_type : public ____get_cli_atom_type<T, __is_cli_scalar<T>:
             __ArgAttrT<T>::shared_from_this());                                         \
     }                                                                                   \
     std::shared_ptr<ArgAttr<T>> examine(                                                \
-            std::function<bool (Ta &, void *context, void *data)> func, std::string desc = "") { \
+            std::function<bool (Ta &, void *context, void *data)> func                  \
+            , std::string desc = "") {                                                  \
         __ArgAttrT<T>::set_match_examine(std::move(func), std::move(desc));             \
         return std::static_pointer_cast<ArgAttr<T>>(                                    \
             __ArgAttrT<T>::shared_from_this());                                         \
@@ -1307,7 +1310,7 @@ public:
     __ArgAttr_required()
     __ArgAttr_positional()
     __ArgAttr_default_value()
-    __ArgAttr_condition()
+    __ArgAttr_examine()
     __ArgAttr_context()
     std::shared_ptr<ArgAttr<T>> choices(std::unordered_set<Ta> value_set) {
         _choices = std::move(value_set);
@@ -1344,11 +1347,13 @@ private:
 };
 template <typename T>
 class __ArgAttrAT<T, __AT_BOOL> : public __ArgAttrT<T> {
+    typedef typename __ArgAttrT<T>::Ta Ta;
 public:
     __ArgAttrAT() : __ArgAttrT<T>() {}
     __ArgAttr_required()
     __ArgAttr_positional()
     __ArgAttr_default_value()
+    __ArgAttr_examine()
 };
 template <typename T>
 class __ArgAttrAT<T, __AT_STRING> : public __ArgAttrT<T> {
@@ -1358,7 +1363,7 @@ public:
     __ArgAttr_required()
     __ArgAttr_positional()
     __ArgAttr_default_value()
-    __ArgAttr_condition()
+    __ArgAttr_examine()
     __ArgAttr_context()
     std::shared_ptr<ArgAttr<T>> choices(std::unordered_set<std::string> values) {
         _choices = std::move(values);
@@ -1398,7 +1403,7 @@ public:
     __ArgAttr_required()
     __ArgAttr_positional()
     __ArgAttr_default_value()
-    __ArgAttr_condition()
+    __ArgAttr_examine()
     __ArgAttr_context()
 };
 template <typename T>
@@ -1409,7 +1414,7 @@ public:
     __ArgAttr_required()
     __ArgAttr_positional()
     __ArgAttr_default_value()
-    __ArgAttr_condition()
+    __ArgAttr_examine()
     __ArgAttr_context()
 };
 
@@ -1452,6 +1457,7 @@ public:
 };
 template <>
 class __ArgAttrLT<bool, bool, bool> : public __ArgAttrT<bool> {
+    typedef bool T;
 public:
     __ArgAttrLT() : __ArgAttrT<bool>() {
         __ArgAttrT<bool>::set_dim_1_limit(0, 1);
@@ -1463,6 +1469,7 @@ public:
         __ArgAttrT<bool>::set_default_value(!value);
         return std::static_pointer_cast<ArgAttr<bool>>(__ArgAttrT<bool>::shared_from_this());
     }
+    __ArgAttr_examine()
 private:
     std::string get_data_desc() const override {
         return __ArgAttrT<bool>::_implicit_value ? "" : __ArgAttrT<bool>::get_data_desc();
@@ -1513,7 +1520,7 @@ class ArgAttr : public __ArgAttrLT<T
 #undef __ArgAttr_positional
 #undef __ArgAttr_default_value
 #undef __ArgAttr_implicit_value
-#undef __ArgAttr_condition
+#undef __ArgAttr_examine
 #undef __ArgAttr_line_width
 #undef __ArgAttr_context
 
@@ -1619,13 +1626,13 @@ private:
 public:
     explicit Parser(std::string app_name = "<THIS>", std::string app_desc = "")
         : _app_name(std::move(app_name)), _app_desc(std::move(app_desc))
-        , _allow_unknown(false), _help_width(-1), _concise_help(false) {
+        , _allow_unknown(false), _help_width(0), _concise_help(false) {
     }
     Parser &allow_unknow() {
         _allow_unknown = true;
         return *this;
     }
-    Parser &set_width(int width) {
+    Parser &set_width(unsigned width) {
         _help_width = width;
         return *this;
     }
@@ -1758,37 +1765,36 @@ void Parser::print_help(const std::string &indent, std::ostream &os) const {
     os << " ...\n";
     static const std::string indent_inner = "    ";
     static const std::string name_delimiter = ", ";
-    static const unsigned flag_width = std::string("constraint: ").length();
-    unsigned name_width = sname_width + lname_width + name_delimiter.length();
+    static const int flag_width = std::string("constraint: ").length();
+    int name_width = sname_width + lname_width + name_delimiter.length();
     int help_width = _help_width - name_width - flag_width \
         - indent_inner.length() - indent.length();
     auto is_space = [&](char c) { return c == ' ' || c == '\t'; };
     auto print_desc = [&](const std::string &desc) {
-        if (help_width > 0) {
-            size_t b = 0;
-            while (b < desc.length()) {
-                size_t e = desc.find('\n', b);
-                if (e > b + help_width) {
-                    e = b + help_width;
-                }
-                while (e > b && desc[e] && !is_space(desc[e]) && desc[e] != '\n') {
-                    --e;
-                }
-                if (e == b) {
-                    e = b + help_width;
-                }
-                if (b) {
-                    os << "\n" << indent << indent_inner
-                        << std::setw(name_width) << "";
-                    if (!_concise_help) {
-                        os << std::setw(flag_width) << "";
-                    }
-                }
-                os << desc.substr(b, e - b);
-                b = e + 1;
+        size_t b = 0;
+        while (b < desc.length()) {
+            size_t e = desc.find('\n', b);
+            if (e == desc.npos) {
+                e = desc.length();
             }
-        } else {
-            os << indent << desc;
+            if (help_width > 0 && e > b + help_width) {
+                e = b + help_width;
+            }
+            while (e > b && desc[e] && !is_space(desc[e]) && desc[e] != '\n') {
+                --e;
+            }
+            if (e == b) {
+                e = help_width > 0 ? b + help_width : desc.length();
+            }
+            if (b) {
+                os << "\n" << indent << indent_inner
+                    << std::setw(name_width) << "";
+                if (!_concise_help) {
+                    os << std::setw(flag_width) << "";
+                }
+            }
+            os << desc.substr(b, e - b);
+            b = e;
         }
     };
     for (auto &it : _arg_desc_list) {
