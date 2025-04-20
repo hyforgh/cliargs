@@ -191,8 +191,9 @@ choices(std::unordered_set<T> value_set, std::string desc = "");
 ```
 
 ##### 2.3.4 ranges
-Only applicable to numeric types (integers and floating-point numbers). Other types do not have this interface. Program developers can use this interface to set the value range of the value. This interface can be called multiple times to specify multiple ranges.
+Only applicable to numeric types (integers and floating-point numbers). Other types do not have this interface. Program developers can use this interface to set the value range(s) of the value. This interface can be called multiple times to specify multiple ranges.
 ```c++
+ranges(T min_value, T max_value, std::string desc = "");
 ranges(std::vector<std::pair<T, T>> pairs, std::string desc = "");
 ```
 

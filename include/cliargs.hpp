@@ -1,3 +1,7 @@
+/**
+ * github: https://github.com/hyforgh/cliargs
+ */
+
 /*
 MIT License
 
@@ -1333,8 +1337,12 @@ public:
             , to_string(_choices));
         return std::static_pointer_cast<ArgAttr<T>>(__ArgAttrT<T>::shared_from_this());
     }
+    std::shared_ptr<ArgAttr<T>> range(Ta min_value, Ta max_value) {
+        _value_ranges.emplace_back(min_value, max_value);
+        return ranges(std::move(_value_ranges));
+    }
     std::shared_ptr<ArgAttr<T>> ranges(std::vector<std::pair<Ta, Ta>> range_pairs, std::string desc = "") {
-        _value_ranges = std::move(range_pairs);
+        _value_ranges.insert(_value_ranges.end(), range_pairs.begin(), range_pairs.end());
         if (desc.empty()) {
             desc = "within ranges:" + to_string(_value_ranges);
         }

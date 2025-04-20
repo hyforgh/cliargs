@@ -34,7 +34,7 @@ int main(int argc, char *argv[]) {
             cliargs::value<int>()
             ->default_value(g_value_default)
             ->implicit_value(g_value_implicit)
-            ->choices({-1, 0})->ranges({{10, 20}})
+            ->choices({-1, 0})->range(10, 20)->range(30, 40)
             )
         ('s', "string", "A string",
             cliargs::value<std::string>()
@@ -48,7 +48,7 @@ int main(int argc, char *argv[]) {
         ('b', "base_address", "Specify a base address for the followwing operations",
             cliargs::value<uint64_t>()
             ->default_value(0)
-            ->choices({7, 8})->ranges({{0, 10}, {20, 30}})
+            ->choices({7, 8})->ranges({{0, 10}, {20, 30}})->ranges({{40, 50}})
             ->examine([](const uint64_t &v, void *context) -> bool { return v % 2 == 0; }
                 , "be multiples of 2")
             )

@@ -191,8 +191,9 @@ choices(std::unordered_set<T> value_set, std::string desc = "");
 ```
 
 ##### 2.3.4 ranges
-仅适用于数值类型（整数和浮点数）。其它类型无此接口。程序开发者可以通过此接口设置数值的取值范围，此接口可以调用多次指定多个范围
+仅适用于数值类型（整数和浮点数）。其它类型无此接口。程序开发者可以通过此接口设置数值的取值范围，此接口可以调用多次每次可以指定多个范围
 ```c++
+ranges(T min_value, T max_value, std::string desc = "");
 ranges(std::vector<std::pair<T, T>> pairs, std::string desc = "");
 ```
 
