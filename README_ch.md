@@ -193,7 +193,7 @@ choices(std::unordered_set<T> value_set, std::string desc = "");
 ##### 2.3.4 ranges
 仅适用于数值类型（整数和浮点数）。其它类型无此接口。程序开发者可以通过此接口设置数值的取值范围，此接口可以调用多次每次可以指定多个范围
 ```c++
-ranges(T min_value, T max_value, std::string desc = "");
+range(T min_value, T max_value, std::string desc = "");
 ranges(std::vector<std::pair<T, T>> pairs, std::string desc = "");
 ```
 
@@ -265,7 +265,7 @@ parser.add_args()
 #### 3.2 元数据类型特有属性接口
 |meta type|attributes|
 |---------|----------|
-|numerical|choices, ranges
+|numerical|choices, ranges, range
 |string   |choices, regex
 |struct   |
 
@@ -293,11 +293,12 @@ parser.add_args()
 |`tuple<scalar...>`        |`tuple<scalar...>`
 
 #### 3.5 cliargs::Parser 的属性
-|attribute|
-|---------|
-|`allow_unknow`
-|`set_width`
-|`concise_help`
+|attribute|description|
+|---------|-----------|
+|`allow_unknown` |当用户指定了未定义的命令行参数名称时不报错
+|`set_width`     |设置帮助信息中每行显示的最大字符数
+|`concise_help`  |使用简洁的帮助信息
+|`sensitive_mode`|开启[“敏感模式”](#关于敏感模式)
 
 ### 4. 其它
 #### 4.1 反向布尔参数
@@ -359,3 +360,9 @@ std::cout << cliargs::type_traits<MyType>::name() << std::endl;
 ```log
 map<string, tuple<int, vector<float>>>
 ```
+
+#### 4.5 关于敏感模式
+在这种模式下：
+1. 当命令参数类型为字符串时，cliargs 会将以减号（`-`）开始的字符串（包括负数）当做命令行参数名称
+2. 如果需要输入以减号（`-`）开始的字符串作为字符串类型的命令行参数值，请在减号前添加反斜杠。cliargs 会自动去掉命令行参数值开头的一个反斜杠
+3. **在这种模式下，在某些情况下会违背 GNU 习惯**

@@ -193,7 +193,7 @@ choices(std::unordered_set<T> value_set, std::string desc = "");
 ##### 2.3.4 ranges
 Only applicable to numeric types (integers and floating-point numbers). Other types do not have this interface. Program developers can use this interface to set the value range(s) of the value. This interface can be called multiple times to specify multiple ranges.
 ```c++
-ranges(T min_value, T max_value, std::string desc = "");
+range(T min_value, T max_value, std::string desc = "");
 ranges(std::vector<std::pair<T, T>> pairs, std::string desc = "");
 ```
 
@@ -265,7 +265,7 @@ The attribute interface includes "[common attribute interface](#common attribute
 #### 3.2 Metadata type-specific attribute interface
 |meta type|attributes|
 |---------|----------|
-|numerical|choices, ranges
+|numerical|choices, ranges, range
 |string |choices, regex
 |struct |
 
@@ -293,11 +293,12 @@ The data type of `implicit_value` is as follows:
 |`tuple<scalar...>` |`tuple<scalar...>`
 
 #### 3.5 `cliargs::Parser`'s attributes
-|attribute|
-|---------|
-|`allow_unknow`
-|`set_width`
-|`concise_help`
+|attribute|description|
+|---------|-----------|
+|`allow_unknown`|if user specifies an undefined argument name, no error will occur
+|`set_width`    |set the line width for help messages
+|`concise_help` |use concise help messages
+|`sensitive_mode`|enable [sensitive mode](#sensitive mode)
 
 ### 4. Others
 #### 4.1 Reverse Boolean Argument
@@ -357,3 +358,9 @@ std::cout << cliargs::type_traits<MyType>::name() << std::endl;
 ```log
 map<string, tuple<int, vector<float>>>
 ```
+
+#### 4.5 sensitive mode
+In this mode:
+1. When the command parameter type is a string, `cliprgs` will treat the string (including negative numbers) starting with a minus sign (` - `) as the command line parameter name
+2. If you need to input a string starting with a minus sign (` - `) as a string type command-line parameter value, please add a back slash before the minus sign. `cliargs` will automatically remove a back slash at the beginning of the command line parameter value
+3. **In this mode, it may violate GNU conventions in some cases**
