@@ -441,9 +441,6 @@ const char *__parse_by_format(T &var, char *psz, const std::string &var_name
     return err_type_name;
 }
 
-bool __is_arg_name(const char *p) {
-    return p && p[0] == '-';
-}
 bool __is_arg_name_short(const char *p) {
     return p && p[0] == '-' && p[1] != '-' && p[1];
 }
@@ -818,10 +815,12 @@ bool ArgParser::assign(Tm &value, const std::string &name, Tm default_value) {
             _err_list.emplace_back(ss.str());
         }
     };
-    static auto is_tm_string = std::is_convertible<Tm, std::string>::value;
+    constexpr auto is_tm_string = std::is_convertible<Tm, std::string>::value;
+    static std::regex s_reg_digital("[0-9\\.]+");
     char *psz = nullptr;
     if (!_is_terminated && _at_most <= _argc \
-            && (!is_tm_string || !_sensitive_mode || !__is_arg_name(_argv[_argi]))) {
+            && (!is_tm_string || !_sensitive_mode || _argv[_argi][0] != '-' \
+                || std::regex_match(_argv[_argi] + 1, s_reg_digital))) {
         psz = _argv[_argi++];
     } else {
         terminate_error();
@@ -835,10 +834,14 @@ bool ArgParser::assign(Tm &value, const std::string &name, Tm default_value) {
     }
     __parse_by_format(value, psz, concat_name(name), err_tmp, get_context(), psz);
     if (err_tmp.size()) {
-        if (__is_arg_name(psz)) {
-            value = std::move(default_value);
-            --_argi;
-            terminate_error();
+        if (psz[0] == '-') {
+            if (std::regex_match(psz + 1, s_reg_digital)) {
+                _err_list.splice(_err_list.end(), err_tmp);
+            } else {
+                value = std::move(default_value);
+                --_argi;
+                terminate_error();
+            }
         } else {
             _err_list.splice(_err_list.end(), err_tmp);
         }
@@ -2058,14 +2061,13 @@ struct ____VectorParser<Ta, Ta> {
             , std::function<const typename __get_implicit_value_type<std::vector<Ta>>::type &()> get_implicit_value
             , const std::string &name
             ) {
-        int item_at_most = 0;
-        {
+        static int item_at_most = [&]() -> int {
             std::list<std::string> err_tmp;
             __ArgParser parser(nullptr, 0, err_tmp, sensitive_mode, nullptr);
             Ta arg_value;
             __parse_by_parser(arg_value, parser, "");
-            item_at_most = parser.at_most();
-        }
+            return parser.at_most();
+        }();
         int i = 0;
         unsigned n = 0;
         while (n < at_most && value.size() < at_most) {

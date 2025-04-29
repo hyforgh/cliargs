@@ -139,9 +139,9 @@ const char *__parse_by_format(MyStruct &obj, char *psz
 --my_struct "data.bin,32,64"
 --my_struct "data.bin,32"
 ```
-> Note: `cliargs` will automatically deduce the type name of `MyStruct`
-assert(cliargs::type_traits<MyStruct>::name() == "{\"string,float[,long]\"}");
-assert(cliargs::type_traits<std::vector<MyStruct>>::name() == "vector<{\"string,float[,long]\"}>");
+> Note: `cliargs` will automatically deduce the type name of `MyStruct`:
+> assert(cliargs::type_traits<MyStruct>::name() == "{string, float[, long]}");
+> assert(cliargs::type_traits<std::vector<MyStruct>>::name() == "vector<{string, float[, long]}>");
 
 ##### 2.2.2 Combining structures with STL containers
 |layout|c++ type|__parse_by|usage|
@@ -361,6 +361,6 @@ map<string, tuple<int, vector<float>>>
 
 #### 4.5 sensitive mode
 In this mode:
-1. When the command parameter type is a string, `cliprgs` will treat the string (including negative numbers) starting with a minus sign (` - `) as the command line parameter name
-2. If you need to input a string starting with a minus sign (` - `) as a string type command-line parameter value, please add a back slash before the minus sign. `cliargs` will automatically remove a back slash at the beginning of the command line parameter value
+1. When the command parameter type is a string, `cliprgs` will treat the string (excluding negative numbers) starting with a minus sign (`-`) as the command line parameter name
+2. If you need to input a string starting with a minus sign (`-`) as a string type command-line parameter value, please add a back slash before the minus sign. `cliargs` will automatically remove a back slash at the beginning of the command line parameter value
 3. **In this mode, it may violate GNU conventions in some cases**

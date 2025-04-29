@@ -112,9 +112,9 @@ void __parse_by_parser(MyStruct &obj, cliargs::ArgParser &parser, const std::str
 --my_struct data.bin 32
 ```
 
-> 说明：`cliargs` 将自动推导 `MyStruct` 的类型名称
-    assert(cliargs::type_traits<MyStruct>::name() == "{string, float[, long]}");
-    assert(cliargs::type_traits<std::vector<MyStruct>>::name() == "vector<{string, float[, long]}>");
+> 说明：`cliargs` 将自动推导 `MyStruct` 的类型名称：
+> assert(cliargs::type_traits<MyStruct>::name() == "{string, float[, long]}");
+> assert(cliargs::type_traits<std::vector<MyStruct>>::name() == "vector<{string, float[, long]}>");
 
 ###### 2.2.1.2 重载 `__parse_by_format`
 重载此函数后，程序用户需要使用**单个结构化的字符串**给结构体赋值。[完整示例](examples/my_struct_parse_by_format.cpp)
@@ -363,6 +363,6 @@ map<string, tuple<int, vector<float>>>
 
 #### 4.5 关于敏感模式
 在这种模式下：
-1. 当命令参数类型为字符串时，cliargs 会将以减号（`-`）开始的字符串（包括负数）当做命令行参数名称
+1. 当命令参数类型为字符串时，cliargs 会将以减号（`-`）开始的字符串（除了负数）当做命令行参数名称
 2. 如果需要输入以减号（`-`）开始的字符串作为字符串类型的命令行参数值，请在减号前添加反斜杠。cliargs 会自动去掉命令行参数值开头的一个反斜杠
 3. **在这种模式下，在某些情况下会违背 GNU 习惯**
