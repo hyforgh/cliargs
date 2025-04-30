@@ -104,7 +104,6 @@ TEST_CASE("vector_numeric") {
         CLI_TEST_DEFINE_NORM_ARG((std::vector<MyTuple>), (->line_width(2))
             , "--arg_name", "data", "1.5", "2", "--arg_name", "bin");
         CHECK(parser.error());
-        parser.print_help();
         std::cout << cliargs::to_string(arg_value.as<std::vector<MyTuple>>()) << std::endl;
         CHECK(cli_error_like(parser.error_details(),
             ".*a\\(n\\) 'float' value is required as 'vector\\[1\\]<1>'"));
@@ -152,7 +151,6 @@ TEST_CASE("vector_numeric") {
             , (->line_width(2)->implicit_value({"name", 2, -1}))
             , "--arg_name", "key1", "data", "1.5", "2", "--arg_name", "key2", "bin");
         CHECK(parser.error());
-        parser.print_help();
         std::cout << cliargs::to_string(arg_value.as<std::map<std::string, MyTuple>>()) << std::endl;
         CHECK(cli_error_like(parser.error_details(),
             ".*a\\(n\\) 'float' value is required as 'map\\[\"key2\"\\]<1>'"));

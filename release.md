@@ -1,3 +1,12 @@
+## 1.2.0
+* new feature
+    1. sensitive mode
+    2. hide some arguments in help message
+    3. new attribute `range(T min_value, T max_value, ...)`
+
+* fix bug
+    1. binary number fails in same environment
+
 ## 1.1.0
 * new feature
     1. support binary number
