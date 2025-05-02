@@ -1877,6 +1877,20 @@ void Parser::print_help(const std::string &indent, std::ostream &os) const {
     os.flags(flags);
 }
 
+template <typename Ta>
+struct __AtMostValuesOf {
+    static int at_most(bool sensitive_mode) {
+        static auto s_at_most = [](bool sensitive_mode) -> int {
+            std::list<std::string> err_tmp;
+            __ArgParser parser(nullptr, 0, err_tmp, sensitive_mode, nullptr);
+            Ta arg_value;
+            __parse_by_parser(arg_value, parser, "");
+            return parser.at_most();
+        }(sensitive_mode);
+        return s_at_most;
+    }
+};
+
 struct __ParseResult {
     int argi;
     int data_count;
@@ -1908,14 +1922,16 @@ struct __DataParser {
         if ((i || get_implicit_value) && examine) {
             auto err_detail = examine(value, data);
             if (!err_detail.empty()) {
+                static auto item_at_most = __AtMostValuesOf<T>::at_most(sensitive_mode);
                 std::stringstream ss;
-                ss << "unexpected value '";
-                if (i > 1) {
-                    ss << to_string(std::vector<char *>(argv, argv + i));
+                ss << "invalid value";
+                if (item_at_most > 1) {
+                    ss << " group '" << to_string(std::vector<char *>(argv, argv + i))
+                       << " (as type " << type_traits<T>::name() << ")";
                 } else {
-                    ss << *argv;
+                    ss << " '" << *argv << "'";
                 }
-                ss << "', " << err_detail;
+                ss << ", " << err_detail;
                 err_list.emplace_back(ss.str());
             }
         }
@@ -2061,13 +2077,7 @@ struct ____VectorParser<Ta, Ta> {
             , std::function<const typename __get_implicit_value_type<std::vector<Ta>>::type &()> get_implicit_value
             , const std::string &name
             ) {
-        static int item_at_most = [&]() -> int {
-            std::list<std::string> err_tmp;
-            __ArgParser parser(nullptr, 0, err_tmp, sensitive_mode, nullptr);
-            Ta arg_value;
-            __parse_by_parser(arg_value, parser, "");
-            return parser.at_most();
-        }();
+        static auto item_at_most = __AtMostValuesOf<Ta>::at_most(sensitive_mode);
         int i = 0;
         unsigned n = 0;
         while (n < at_most && value.size() < at_most) {

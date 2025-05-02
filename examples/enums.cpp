@@ -29,7 +29,7 @@ int main(int argc, char *argv[]) {
     //  Create a 'cliargs::Parser' instance
     cliargs::Parser parser("MyProgram", "One line description of MyProgram");
     // Define arguments
-    parser.add_args()
+    parser.sensitive_mode().add_args()
         ('h', "help", "Print this message and exit") // a bool argument
         ('s', "str", "A string enum",
             cliargs::value<std::string>()
