@@ -41,7 +41,7 @@ TEST_CASE("scalar_string") {
         CLI_TEST_DEFINE_NORM_ARG((std::string), (->choices({"hello", "world"})), "--arg_name", "cliargs");
         CHECK(parser.error());
         CHECK(cli_error_like(parser.error_details(),
-            ".*unexpected value 'cliargs', should meet constraint: in set:\\{(\"hello\"|, |\"world\"){3}\\}"));
+            ".*invalid value 'cliargs', should meet constraint: in set:\\{(\"hello\"|, |\"world\"){3}\\}"));
     }
 
     SECTION("regex-success") {
@@ -54,7 +54,7 @@ TEST_CASE("scalar_string") {
         CLI_TEST_DEFINE_NORM_ARG((std::string), (->regex("\\d+", "integer")), "--arg_name", "cliargs");
         CHECK(parser.error());
         CHECK(cli_error_like(parser.error_details(),
-            ".*unexpected value 'cliargs', should meet constraint: integer"));
+            ".*invalid value 'cliargs', should meet constraint: integer"));
     }
 
     SECTION("examine-success") {
@@ -71,7 +71,7 @@ TEST_CASE("scalar_string") {
             "--arg_name", "");
         CHECK(parser.error());
         CHECK(cli_error_like(parser.error_details(),
-            ".*unexpected value '', should meet constraint: 'not empty'"));
+            ".*invalid value '', should meet constraint: 'not empty'"));
     }
 
     SECTION("constraint-success-choices") {
@@ -102,7 +102,7 @@ TEST_CASE("scalar_string") {
             "--arg_name", "5j");
         CHECK(parser.error());
         CHECK(cli_error_like(parser.error_details(),
-            ".*unexpected value '5j', should meet constraint: "
+            ".*invalid value '5j', should meet constraint: "
             "\\(in set:\\{(\"hello\"|, |\"world\"){3}\\} or integer\\) and 'shorter than 4'"));
     }
 
@@ -114,7 +114,7 @@ TEST_CASE("scalar_string") {
             "--arg_name", "5120");
         CHECK(parser.error());
         CHECK(cli_error_like(parser.error_details(),
-            ".*unexpected value '5120', should meet constraint: "
+            ".*invalid value '5120', should meet constraint: "
             "\\(in set:\\{(\"hello\"|, |\"world\"){3}\\} or integer\\) and 'shorter than 4'"));
     }
 

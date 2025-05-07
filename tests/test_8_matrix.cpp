@@ -98,7 +98,7 @@ TEST_CASE("vector_numeric") {
         CLI_TEST_DEFINE_NORM_ARG((MyMatrix), (->choices({5.12, 1.1, 5.0})), "--arg_name", "2");
         CHECK(parser.error());
         CHECK(cli_error_like(parser.error_details(),
-            ".*unexpected value '2', should meet constraint: in set:\\{(5\\.12|, |1\\.1|, |5.*){5}\\}"));
+            ".*invalid value '2', should meet constraint: in set:\\{(5\\.12|, |1\\.1|, |5.*){5}\\}"));
     }
 
     SECTION("ranges-success") {
@@ -111,7 +111,7 @@ TEST_CASE("vector_numeric") {
         CLI_TEST_DEFINE_NORM_ARG((MyMatrix), (->ranges({{10.5, 20.8}, {40.5, 60.5}})), "--arg_name", "30.1");
         CHECK(parser.error());
         CHECK(cli_error_like(parser.error_details(),
-            ".*unexpected value '30.1', should meet constraint: within ranges:\\[\\(10\\.5, 20\\.8\\), \\(40\\.5, 60\\.5\\)\\]"));
+            ".*invalid value '30.1', should meet constraint: within ranges:\\[\\(10\\.5, 20\\.8\\), \\(40\\.5, 60\\.5\\)\\]"));
     }
 
     SECTION("examine-success") {
@@ -128,7 +128,7 @@ TEST_CASE("vector_numeric") {
             "--arg_name", "-50.1");
         CHECK(parser.error());
         CHECK(cli_error_like(parser.error_details(),
-            ".*unexpected value '-50.1', should meet constraint: 'positive'"));
+            ".*invalid value '-50.1', should meet constraint: 'positive'"));
     }
 
     SECTION("constraint-success-choices") {
@@ -159,7 +159,7 @@ TEST_CASE("vector_numeric") {
             "--arg_name", "4.0");
         CHECK(parser.error());
         CHECK(cli_error_like(parser.error_details(),
-            ".*unexpected value '4.0', should meet constraint: "
+            ".*invalid value '4.0', should meet constraint: "
             "\\(in set:\\{(5\\.12|, |1\\.1|, |5.*){5}\\} or within ranges:\\[\\(10\\.5, 20\\.8\\), \\(40\\.5, 60\\.5\\)\\]\\) and 'integer'"));
     }
 
@@ -171,7 +171,7 @@ TEST_CASE("vector_numeric") {
             "--arg_name", "40.8");
         CHECK(parser.error());
         CHECK(cli_error_like(parser.error_details(),
-            ".*unexpected value '40.8', should meet constraint: "
+            ".*invalid value '40.8', should meet constraint: "
             "\\(in set:\\{(5\\.12|, |1\\.1|, |5.*){5}\\} or within ranges:\\[\\(10\\.5, 20\\.8\\), \\(40\\.5, 60\\.5\\)\\]\\) and 'integer'"));
     }
 

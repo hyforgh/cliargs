@@ -1827,7 +1827,7 @@ void Parser::print_help(const std::string &indent, std::ostream &os) const {
                 }
             }
             os << desc.substr(b, e - b);
-            b = e;
+            b = e + 1;
         }
     };
     for (auto &it : _arg_desc_list) {
@@ -2412,21 +2412,23 @@ Result Parser::parse(int argc, char *argv[]) {
     }
 
     Result result;
-    for (auto &it : result_impl) {
-        auto err_detail = it.second->finish();
+    for (auto &desc : _arg_desc_list) {
+        auto arg_name = desc.name();
+        auto &arg_data = result_impl[arg_name];
+        auto err_detail = arg_data->finish();
         if (err_detail.length()) {
-            auto &arg_desc = _arg_desc_dict[it.first];
+            auto &arg_desc = _arg_desc_dict[arg_name];
             std::stringstream ss;
             ss << "usage: arg['";
             auto &flag = arg_desc->flag();
             if (!flag.empty()) {
                 ss << flag << ", ";
             }
-            ss << it.first << "']" << err_detail;
+            ss << arg_name << "']" << err_detail;
             _err_list.emplace_back(ss.str());
         }
-        auto arg_name = it.first.substr(2);
-        result.add_data(arg_name, std::move(ArgData(it.second, arg_name)));
+        arg_name = arg_name.substr(2);
+        result.add_data(arg_name, std::move(ArgData(arg_data, arg_name)));
     }
     return result;
 }

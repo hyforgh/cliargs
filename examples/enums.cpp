@@ -31,7 +31,7 @@ int main(int argc, char *argv[]) {
     // Define arguments
     parser.sensitive_mode().add_args()
         ('h', "help", "Print this message and exit") // a bool argument
-        ('s', "str", "A string enum",
+        ('s', "str", "A string enum" "\ndump - dump to file" "\nload - load from file",
             cliargs::value<std::string>()
             ->choices({"dump", "load"})->regex("\\d+", "a integer")
             // the value can only be one of {"dump", "load"} or an interger

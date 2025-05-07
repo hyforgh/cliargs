@@ -45,7 +45,7 @@ TEST_CASE("scalar_numeric") {
         CLI_TEST_DEFINE_NORM_ARG((std::map<std::string, int>), (->choices({1, 3, 5})), "--arg_name", "key1", "2");
         CHECK(parser.error());
         CHECK(cli_error_like(parser.error_details(),
-            ".*unexpected value '2', should meet constraint: in set:\\{(1|, |3|, |5){5}\\}"));
+            ".*invalid value '2', should meet constraint: in set:\\{(1|, |3|, |5){5}\\}"));
     }
 
     SECTION("ranges-success") {
@@ -58,7 +58,7 @@ TEST_CASE("scalar_numeric") {
         CLI_TEST_DEFINE_NORM_ARG((std::map<std::string, int>), (->ranges({{10, 20}, {40, 60}})), "--arg_name", "key1", "30");
         CHECK(parser.error());
         CHECK(cli_error_like(parser.error_details(),
-            ".*unexpected value '30', should meet constraint: within ranges:\\[\\(10, 20\\), \\(40, 60\\)\\]"));
+            ".*invalid value '30', should meet constraint: within ranges:\\[\\(10, 20\\), \\(40, 60\\)\\]"));
     }
 
     SECTION("examine-success") {
@@ -75,7 +75,7 @@ TEST_CASE("scalar_numeric") {
             "--arg_name", "key1", "512");
         CHECK(parser.error());
         CHECK(cli_error_like(parser.error_details(),
-            ".*unexpected value '512', should meet constraint: 'odd number'"));
+            ".*invalid value '512', should meet constraint: 'odd number'"));
     }
 
     SECTION("constraint-success-choices") {
@@ -106,7 +106,7 @@ TEST_CASE("scalar_numeric") {
             "--arg_name", "key1", "30");
         CHECK(parser.error());
         CHECK(cli_error_like(parser.error_details(),
-            ".*unexpected value '30', should meet constraint: "
+            ".*invalid value '30', should meet constraint: "
             "\\(in set:\\{(1|, |3|, |5){5}\\} or within ranges:\\[\\(10, 20\\), \\(40, 60\\)\\]\\) and 'odd number'"));
     }
 
@@ -118,7 +118,7 @@ TEST_CASE("scalar_numeric") {
             "--arg_name", "key1", "50");
         CHECK(parser.error());
         CHECK(cli_error_like(parser.error_details(),
-            ".*unexpected value '50', should meet constraint: "
+            ".*invalid value '50', should meet constraint: "
             "\\(in set:\\{(1|, |3|, |5){5}\\} or within ranges:\\[\\(10, 20\\), \\(40, 60\\)\\]\\) and 'odd number'"));
     }
 
