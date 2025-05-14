@@ -1555,9 +1555,10 @@ std::shared_ptr<ArgAttr<T>> value() {
 
 class ArgDesc {
 public:
-    ArgDesc(char flag, const std::string &name, const std::string &desc
-                , std::shared_ptr<__ArgAttrI> attr)
-            : _sname("-"), _lname(name), _desc(desc), _attr(attr) {
+    ArgDesc(char flag, std::string name, std::string desc
+                , std::shared_ptr<__ArgAttrI> attr, std::string alias="")
+            : _sname("-"), _lname(std::move(name)), _desc(std::move(desc))
+            , _alias(std::move(alias)), _attr(attr) {
         if (flag) {
             _sname += flag;
         } else {
@@ -1574,6 +1575,9 @@ public:
     const std::string &desc() const {
         return _desc;
     }
+    const std::string &alias() const {
+        return _alias;
+    }
     const __ArgAttrI *attr() const {
         return _attr.get();
     }
@@ -1582,6 +1586,7 @@ private:
     std::string _sname;
     std::string _lname;
     std::string _desc;
+    std::string _alias;
     std::shared_ptr<__ArgAttrI> _attr;
 }; // ArgDesc
 
@@ -1689,30 +1694,35 @@ public:
 private:
     template <typename T>
     void add_arg(char flag, std::string name, std::string desc
-        , std::shared_ptr<ArgAttr<T>> attr);
+        , std::shared_ptr<ArgAttr<T>> attr
+        , std::string alias="");
 
     class ArgAdder {
     public:
         ArgAdder &operator () (char flag, const std::string &name
-                , const std::string &desc) {
-            _parser.add_arg(flag, name, desc, value<bool>()->implicit_value(true));
+                , const std::string &desc, std::string alias="") {
+            _parser.add_arg(flag, name, desc, value<bool>()->implicit_value(true)
+                , std::move(alias));
             return *this;
         }
         ArgAdder &operator () (const std::string &name
-                , const std::string &desc) {
-            _parser.add_arg(0, name, desc, value<bool>()->implicit_value(true));
+                , const std::string &desc, std::string alias="") {
+            _parser.add_arg(0, name, desc, value<bool>()->implicit_value(true)
+                , std::move(alias));
             return *this;
         }
         template<typename T>
         ArgAdder &operator () (char flag, const std::string &name
-                , const std::string &desc, std::shared_ptr<ArgAttr<T>> attr) {
-            _parser.add_arg(flag, name, desc, attr);
+                , const std::string &desc, std::shared_ptr<ArgAttr<T>> attr
+                , std::string alias="") {
+            _parser.add_arg(flag, name, desc, attr, std::move(alias));
             return *this;
         }
         template<typename T>
         ArgAdder &operator () (const std::string &name
-                , const std::string &desc, std::shared_ptr<ArgAttr<T>> attr) {
-            _parser.add_arg(0, name, desc, attr);
+                , const std::string &desc, std::shared_ptr<ArgAttr<T>> attr
+                , std::string alias="") {
+            _parser.add_arg(0, name, desc, attr, std::move(alias));
             return *this;
         }
 
@@ -1735,7 +1745,7 @@ private:
 
 template <typename T>
 void Parser::add_arg(char flag, std::string name
-        , std::string desc, std::shared_ptr<ArgAttr<T>> attr) {
+        , std::string desc, std::shared_ptr<ArgAttr<T>> attr, std::string alias) {
     auto err_header = std::string("define[") + to_string(_arg_desc_list.size()) + "]:";
     if (name.empty()) {
         _err_list.emplace_back(err_header + "long name is required");
@@ -1749,13 +1759,13 @@ void Parser::add_arg(char flag, std::string name
         _err_list.emplace_back(err_header + "invalid short name '" + flag + "'");
         return;
     }
-    auto sname = std::string("-") + flag;
-    if (flag && _arg_desc_dict.find(sname) != _arg_desc_dict.end()) {
-        _err_list.emplace_back(err_header + "short name '" + flag + "' is in used");
+    if (alias == "-" || alias == "--") {
+        _err_list.emplace_back(err_header + "invalid alias '" + alias + "'");
         return;
     }
-    if (_arg_desc_dict.find(name) != _arg_desc_dict.end()) {
-        _err_list.emplace_back(err_header + "long name '" + name + "' is in used");
+    auto sname = std::string("-") + flag;
+    if (flag && _arg_desc_dict.find(sname) != _arg_desc_dict.end()) {
+        _err_list.emplace_back(err_header + "invalid short name '" + flag + "' is in used");
         return;
     }
     if (name[0] != '-') {
@@ -1763,12 +1773,30 @@ void Parser::add_arg(char flag, std::string name
     } else if (name[1] != '-') {
         name = "-" + name;
     }
-    _arg_desc_list.emplace_back(flag, name, desc, attr);
+    if (_arg_desc_dict.find(name) != _arg_desc_dict.end()) {
+        _err_list.emplace_back(err_header + "invalid long name '" + name + "' is in used");
+        return;
+    }
+    if (!alias.empty()) {
+        if (alias[0] != '-') {
+            alias = "--" + alias;
+        } else if (alias[1] != '-') {
+            alias = "-" + alias;
+        }
+        if (_arg_desc_dict.find(alias) != _arg_desc_dict.end()) {
+            _err_list.emplace_back(err_header + "invalid alias '" + alias + "' is in used");
+            return;
+        }
+    }
+    _arg_desc_list.emplace_back(flag, name, desc, attr, alias);
     ArgDesc &arg_desc = *_arg_desc_list.rbegin();
     if (flag) {
         _arg_desc_dict[sname] = &arg_desc;
     }
     _arg_desc_dict[name] = &arg_desc;
+    if (!alias.empty()) {
+        _arg_desc_dict[alias] = &arg_desc;
+    }
 }
 
 void Parser::print_help(const std::string &indent, std::ostream &os) const {
@@ -1835,14 +1863,16 @@ void Parser::print_help(const std::string &indent, std::ostream &os) const {
         if (attr->is_hidden()) {
             continue;
         }
+        auto &flag = it.flag();
+        auto &name = it.name();
         os << indent << indent_inner
-            << std::right << std::setw(sname_width) << it.flag();
-        if (it.flag().empty()) {
+            << std::right << std::setw(sname_width) << flag;
+        if (flag.empty()) {
             os << std::setw(name_delimiter.length()) << "";
         } else {
             os << name_delimiter;
         }
-        os << std::left << std::setw(lname_width) << it.name();
+        os << std::left << std::setw(lname_width) << name;
         print_desc(it.desc());
         if (_concise_help) {
             os << "\n";
@@ -1865,6 +1895,21 @@ void Parser::print_help(const std::string &indent, std::ostream &os) const {
                 << std::setw(name_width) << ""
                 << std::setw(flag_width) << std::right << "constraint: ";
             print_desc(attr->get_constraint_desc());
+            os << "\n";
+        }
+        auto &alias = it.alias();
+        if (!alias.empty()) {
+            os << indent << indent_inner
+                << std::right << std::setw(sname_width) << "";
+            os << std::setw(name_delimiter.length()) << "";
+            os << std::left << std::setw(lname_width) << alias;
+            std::stringstream ss;
+            ss << "same as '";
+            if (!flag.empty()) {
+                ss << flag << name_delimiter;
+            }
+            ss << name << "'";
+            print_desc(ss.str());
             os << "\n";
         }
     }

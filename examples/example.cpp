@@ -28,7 +28,7 @@ int main(int argc, char *argv[]) {
     //  Create a 'cliargs::Parser' instance
     cliargs::Parser parser("MyProgram", "One line description of MyProgram");
     // Define arguments
-    parser.set_width(120).sensitive_mode().add_args()
+    parser.set_width(100).sensitive_mode().add_args()
         ('h', "help", "Print this message and exit") // a bool argument
         ('v', "value", "An interger",
             cliargs::value<int>()
@@ -51,6 +51,7 @@ int main(int argc, char *argv[]) {
             ->choices({7, 8})->ranges({{0, 10}, {20, 30}})->ranges({{40, 50}})
             ->examine([](const uint64_t &v, void *context) -> bool { return v % 2 == 0; }
                 , "be multiples of 2")
+            , "ba"
             )
         ('d', "dump", "Dump data slices to files. usage '--dump filename address size [skip]'",
             cliargs::value<std::vector<std::tuple<std::string, uint64_t, uint64_t, uint64_t>>>()
