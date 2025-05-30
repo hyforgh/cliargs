@@ -3,7 +3,7 @@
 // Declare struct
 struct MyStruct {
     std::string name;
-    uint64_t offset;
+    int64_t offset;
     uint64_t size;
 };
 // overload oerator << for printing default-value and enum-value in help
@@ -32,6 +32,7 @@ int main(int argc, char *argv[]) {
         ('h', "help", "Print this message and exit") // a bool argument
         ('v', "value", "An interger",
             cliargs::value<int>()
+            ->positional()
             ->default_value(g_value_default)
             ->implicit_value(g_value_implicit)
             ->choices({-1, 0})->range(10, 20)->range(30, 40)

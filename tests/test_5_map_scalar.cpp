@@ -121,6 +121,4 @@ TEST_CASE("scalar_numeric") {
             ".*invalid value '50', should meet constraint: "
             "\\(in set:\\{(1|, |3|, |5){5}\\} or within ranges:\\[\\(10, 20\\), \\(40, 60\\)\\]\\) and 'odd number'"));
     }
-
-#undef PARSE_NUMERIC
 }

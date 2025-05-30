@@ -191,6 +191,4 @@ TEST_CASE("struct_parser") {
         CHECK(av.at("key1").at(0) == MyStruct{"data", 1.5, 2});
         CHECK(av.at("key1").at(1) == MyStruct{"bin", 2.5, 3});
     }
-
-#undef PARSE_NUMERIC
 }

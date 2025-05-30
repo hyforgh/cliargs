@@ -158,6 +158,4 @@ TEST_CASE("map_vector") {
             ".*invalid value '40.8', should meet constraint: "
             "\\(in set:\\{(5\\.12|, |1\\.1|, |5.*){5}\\} or within ranges:\\[\\(10\\.5, 20\\.8\\), \\(40\\.5, 60\\.5\\)\\]\\) and 'integer'"));
     }
-
-#undef PARSE_NUMERIC
 }

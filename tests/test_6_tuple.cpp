@@ -172,6 +172,4 @@ TEST_CASE("vector_numeric") {
         CHECK(av.at("key1").at(0) == MyTuple{"data", 1.5, 2});
         CHECK(av.at("key1").at(1) == MyTuple{"bin", 2.5, 3});
     }
-
-#undef PARSE_NUMERIC
 }

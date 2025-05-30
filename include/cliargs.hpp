@@ -441,8 +441,13 @@ const char *__parse_by_format(T &var, char *psz, const std::string &var_name
     return err_type_name;
 }
 
+bool __is_digital(const char *p) {
+    static std::regex s_reg_digital("[0-9\\.]+");
+    return std::regex_match(p, s_reg_digital);
+}
+
 bool __is_arg_name_short(const char *p) {
-    return p && p[0] == '-' && p[1] != '-' && p[1];
+    return p && p[0] == '-' && p[1] && p[1] != '-' && !__is_digital(p + 1);
 }
 bool __is_arg_name_long(const char *p) {
     return p && p[0] == '-' && p[1] == '-' && p[2];
@@ -804,9 +809,19 @@ bool ArgParser::assign(Tm &value, const std::string &name, Tm default_value) {
     }();
     _item_traits.emplace_back(std::make_pair(type_name, name));
     ++_at_most;
-    auto terminate_error = [&]() {
+    constexpr auto is_tm_string = std::is_convertible<Tm, std::string>::value;
+    char *psz = nullptr;
+    if (!_is_terminated && _at_most <= _argc \
+            && (_argv[_argi][0] != '-'                /*normal string*/     \
+                || __is_digital(_argv[_argi] + 1)     /*negative numberic*/ \
+                || (!_sensitive_mode && is_tm_string) /*force assigning*/   \
+            )) {
+        psz = _argv[_argi++];
+    } else {
         _is_terminated = true;
-        if (!_is_optional) {
+        if (_is_optional) {
+            value = std::move(default_value);
+        } else {
             std::stringstream ss;
             ss << "a(n) '" << type_name << "' value is required";
             if (!name.empty()) {
@@ -814,17 +829,6 @@ bool ArgParser::assign(Tm &value, const std::string &name, Tm default_value) {
             }
             _err_list.emplace_back(ss.str());
         }
-    };
-    constexpr auto is_tm_string = std::is_convertible<Tm, std::string>::value;
-    static std::regex s_reg_digital("[0-9\\.]+");
-    char *psz = nullptr;
-    if (!_is_terminated && _at_most <= _argc \
-            && (!is_tm_string || !_sensitive_mode || _argv[_argi][0] != '-' \
-                || std::regex_match(_argv[_argi] + 1, s_reg_digital))) {
-        psz = _argv[_argi++];
-    } else {
-        terminate_error();
-        value = std::move(default_value);
         return false;
     }
     // maybe psz is a degital
@@ -834,17 +838,7 @@ bool ArgParser::assign(Tm &value, const std::string &name, Tm default_value) {
     }
     __parse_by_format(value, psz, concat_name(name), err_tmp, get_context(), psz);
     if (err_tmp.size()) {
-        if (psz[0] == '-') {
-            if (std::regex_match(psz + 1, s_reg_digital)) {
-                _err_list.splice(_err_list.end(), err_tmp);
-            } else {
-                value = std::move(default_value);
-                --_argi;
-                terminate_error();
-            }
-        } else {
-            _err_list.splice(_err_list.end(), err_tmp);
-        }
+        _err_list.splice(_err_list.end(), err_tmp);
         return false;
     }
     return true;
@@ -1874,28 +1868,28 @@ void Parser::print_help(const std::string &indent, std::ostream &os) const {
         }
         os << std::left << std::setw(lname_width) << name;
         print_desc(it.desc());
-        if (_concise_help) {
-            os << "\n";
-            continue;
-        }
         if (attr->is_positional()) {
             os << " (positional)";
         }
         os << "\n";
-        auto data_desc = attr->get_data_desc();
-        if (!data_desc.empty()) {
-            os << indent  << indent_inner
-                << std::setw(name_width) << ""
-                    << std::setw(flag_width) << std::right << "value: ";
-            print_desc(data_desc);
+        if (_concise_help) {
             os << "\n";
-        }
-        if (attr->has_constraint()) {
-            os << indent << indent_inner
-                << std::setw(name_width) << ""
-                << std::setw(flag_width) << std::right << "constraint: ";
-            print_desc(attr->get_constraint_desc());
-            os << "\n";
+        } else {
+            auto data_desc = attr->get_data_desc();
+            if (!data_desc.empty()) {
+                os << indent  << indent_inner
+                    << std::setw(name_width) << ""
+                        << std::setw(flag_width) << std::right << "value: ";
+                print_desc(data_desc);
+                os << "\n";
+            }
+            if (attr->has_constraint()) {
+                os << indent << indent_inner
+                    << std::setw(name_width) << ""
+                    << std::setw(flag_width) << std::right << "constraint: ";
+                print_desc(attr->get_constraint_desc());
+                os << "\n";
+            }
         }
         auto &alias = it.alias();
         if (!alias.empty()) {

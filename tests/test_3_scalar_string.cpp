@@ -117,6 +117,4 @@ TEST_CASE("scalar_string") {
             ".*invalid value '5120', should meet constraint: "
             "\\(in set:\\{(\"hello\"|, |\"world\"){3}\\} or integer\\) and 'shorter than 4'"));
     }
-
-#undef PARSE_NUMERIC
 }
