@@ -29,7 +29,7 @@ int main(int argc, char *argv[]) {
     parser.set_width(120).add_args()
     ('h', "help", "Print this message and exit") // a bool argument
     ('i', "int", "An interger", cliargs::value<int>()->default_value(-1))
-    ('s', "string", "A string", cliargs::value<std::string>()->default_value("/dev/mem"))
+    ('s', "string", "A string", cliargs::value<std::string>()->default_value("/dev/mem"), "str")
     ('v', "vector", "An int vector", cliargs::value<std::vector<float>>())
     ;
     //Parse
@@ -55,6 +55,7 @@ Usage: MyProgram  ...
                       value: 'int'[optional]; default:-1
     -s, --string A string
                       value: 'string'[optional]; default:"/dev/mem"
+        --str    same as '-s, --string'
     -v, --vector An int vector
                       value: 'vector<float>'[0~N]
 ```
@@ -299,6 +300,14 @@ The data type of `implicit_value` is as follows:
 |`set_width`    |set the line width for help messages
 |`concise_help` |use concise help messages
 |`sensitive_mode`|enable [sensitive mode](#sensitive mode)
+
+#### 3.6 cliargs::add_args()
+|method|
+|------|
+|`(char flag, std::string name, std::string desc, std::string alias="")`
+|`(std::string name, std::string desc, std::string alias="")`
+|`(char flag, std::string name, std::string desc, std::shared_ptr<ArgAttr<T>> attr, std::string alias="")`
+|`(std::string name, std::string desc, std::shared_ptr<ArgAttr<T>> attr, std::string alias="")`
 
 ### 4. Others
 #### 4.1 Reverse Boolean Argument

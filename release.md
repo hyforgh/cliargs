@@ -1,3 +1,10 @@
+## 1.3.0
+* new feature
+    1. argument name alias
+
+* fix bug
+    1. fix positional arguments with negative value
+
 ## 1.2.0
 * new feature
     1. sensitive mode

@@ -29,7 +29,7 @@ int main(int argc, char *argv[]) {
     parser.set_width(120).add_args()
         ('h', "help", "Print this message and exit") // a bool argument
         ('i', "int", "An interger", cliargs::value<int>()->default_value(-1))
-        ('s', "string", "A string", cliargs::value<std::string>()->default_value("/dev/mem"))
+        ('s', "string", "A string", cliargs::value<std::string>()->default_value("/dev/mem"), "str")
         ('v', "vector", "An int vector", cliargs::value<std::vector<float>>())
         ;
     // Parse
@@ -54,6 +54,7 @@ Usage: MyProgram  ...
                       value: 'int'[optional]; default:-1
     -s, --string A string
                       value: 'string'[optional]; default:"/dev/mem"
+        --str    same as '-s, --string'
     -v, --vector An int vector
                       value: 'vector<float>'[0~N]
 ```
@@ -299,6 +300,14 @@ parser.add_args()
 |`set_width`     |设置帮助信息中每行显示的最大字符数
 |`concise_help`  |使用简洁的帮助信息
 |`sensitive_mode`|开启[“敏感模式”](#关于敏感模式)
+
+#### 3.6 cliargs::add_args()
+|method|
+|------|
+|`(char flag, std::string name, std::string desc, std::string alias="")`
+|`(std::string name, std::string desc, std::string alias="")`
+|`(char flag, std::string name, std::string desc, std::shared_ptr<ArgAttr<T>> attr, std::string alias="")`
+|`(std::string name, std::string desc, std::shared_ptr<ArgAttr<T>> attr, std::string alias="")`
 
 ### 4. 其它
 #### 4.1 反向布尔参数

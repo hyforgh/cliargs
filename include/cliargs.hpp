@@ -52,7 +52,7 @@ SOFTWARE.
 namespace cliargs {
 
 #define CLIARGS_VERSION_MAJOR 1
-#define CLIARGS_VERSION_MINOR 2
+#define CLIARGS_VERSION_MINOR 3
 #define CLIARGS_VERSION_PATCH 0
 
 #ifndef CLIARGS_NO_EXCEPTION
@@ -1668,6 +1668,7 @@ public:
         _concise_help = true;
         return *this;
     }
+    // deprecated
     Parser &allow_unknow() {
         return allow_unknown();
     }
@@ -1693,30 +1694,34 @@ private:
 
     class ArgAdder {
     public:
-        ArgAdder &operator () (char flag, const std::string &name
-                , const std::string &desc, std::string alias="") {
-            _parser.add_arg(flag, name, desc, value<bool>()->implicit_value(true)
+        ArgAdder &operator () (char flag, std::string name
+                , std::string desc, std::string alias="") {
+            _parser.add_arg(flag, std::move(name), std::move(desc)
+                , value<bool>()->implicit_value(true)
                 , std::move(alias));
             return *this;
         }
-        ArgAdder &operator () (const std::string &name
-                , const std::string &desc, std::string alias="") {
-            _parser.add_arg(0, name, desc, value<bool>()->implicit_value(true)
+        ArgAdder &operator () (std::string name
+                , std::string desc, std::string alias="") {
+            _parser.add_arg(0, std::move(name), std::move(desc)
+                , value<bool>()->implicit_value(true)
                 , std::move(alias));
             return *this;
         }
         template<typename T>
-        ArgAdder &operator () (char flag, const std::string &name
-                , const std::string &desc, std::shared_ptr<ArgAttr<T>> attr
+        ArgAdder &operator () (char flag, std::string name
+                , std::string desc, std::shared_ptr<ArgAttr<T>> attr
                 , std::string alias="") {
-            _parser.add_arg(flag, name, desc, attr, std::move(alias));
+            _parser.add_arg(flag, std::move(name), std::move(desc)
+                , std::move(attr), std::move(alias));
             return *this;
         }
         template<typename T>
-        ArgAdder &operator () (const std::string &name
-                , const std::string &desc, std::shared_ptr<ArgAttr<T>> attr
+        ArgAdder &operator () (std::string name
+                , std::string desc, std::shared_ptr<ArgAttr<T>> attr
                 , std::string alias="") {
-            _parser.add_arg(0, name, desc, attr, std::move(alias));
+            _parser.add_arg(0, std::move(name), std::move(desc)
+                , std::move(attr), std::move(alias));
             return *this;
         }
 
