@@ -249,6 +249,21 @@ parser.add_args()
     );
 ```
 
+#### 2.6 Support for Argument Nesting
+##### 2.6.1 GNU-style Default Nesting
+All strings located after `--` and whose first string is not a command-line parameter name with the ` stop_ot_eof() ` attribute will be placed into the ` Tail ` object returned by ` cliargs:: Result:: tail() `
+
+```c++
+cliargs::Parser parser("MyProgram", "One line description of MyProgram");
+...
+auto result = parser.parse(argc, argv);
+...
+auto &tail = result.tail();
+```
+
+##### 2.6.2 Extended Nesting Argument
+Setting the `stop_at_eof` attribute for command-line arguments of type `std::vector<char *>` or `std::vector<std::string>` will allow them to consume all subsequent strings until encountering a terminator (`--`). To include the terminator (`--`) as input, prefix it with a backslash (`\\`, in shell and c++ language we need input two)
+
 ## 3. Summary of command line parameter attribute interfaces
 The attribute interface includes "[common attribute interface](#common attribute interface)", "[metadata type specific attribute interface](#metadata type specific attribute interface)" and "[container type specific attribute interface](#container type specific attribute interface)". The final attribute interface of the combined type is the **union of the three**.
 
@@ -267,8 +282,9 @@ The attribute interface includes "[common attribute interface](#common attribute
 |meta type|attributes|
 |---------|----------|
 |numerical|choices, ranges, range
-|string |choices, regex
-|struct |
+|string   |choices, stop_at_eof, regex
+|tuple    |stop_at_eof
+|struct   |stop_at_eof
 
 #### 3.3 Container type-specific attribute interface
 | |attribute|
@@ -308,6 +324,15 @@ The data type of `implicit_value` is as follows:
 |`(std::string name, std::string desc, std::string alias="")`
 |`(char flag, std::string name, std::string desc, std::shared_ptr<ArgAttr<T>> attr, std::string alias="")`
 |`(std::string name, std::string desc, std::shared_ptr<ArgAttr<T>> attr, std::string alias="")`
+
+#### 3.7 cliargs::Result::tail()
+All strings located after `--` and whose first string is not a command-line parameter name with the ` stop_ot_eof() ` attribute will be placed into the ` Tail ` object returned by ` cliargs:: Result:: tail() `
+```c++
+struct cliargs::Result::Tail {
+    int argc;
+    char **argv;
+};
+```
 
 ### 4. Others
 #### 4.1 Reverse Boolean Argument
@@ -371,5 +396,5 @@ map<string, tuple<int, vector<float>>>
 #### 4.5 sensitive mode
 In this mode:
 1. When the command parameter type is a string, `cliprgs` will treat the string (excluding negative numbers) starting with a minus sign (`-`) as the command line parameter name
-2. If you need to input a string starting with a minus sign (`-`) as a string type command-line parameter value, please add a back slash before the minus sign. `cliargs` will automatically remove a back slash at the beginning of the command line parameter value
+2. If you need to input a string starting with a minus sign (`-`) as a string type command-line parameter value, please add a back slash (`\\`, in shell and c++ language we need input two) before the minus sign. `cliargs` will automatically remove the first back slash (`\`) at the beginning of the command line parameter value
 3. **In this mode, it may violate GNU conventions in some cases**

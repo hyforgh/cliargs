@@ -9,6 +9,8 @@ int main(int argc, char *argv[]) {
         ('i', "int", "An interger", cliargs::value<int>()->default_value(-1))
         ('s', "string", "A string", cliargs::value<std::string>()->default_value("/dev/mem"), "str")
         ('v', "vector", "An int vector", cliargs::value<std::vector<float>>()->data_count(1, 2))
+        ("group1", "Arguments group 1", cliargs::value<std::vector<char *>>()->stop_at_eof())
+        ("group2", "Arguments group 2", cliargs::value<std::vector<char *>>()->stop_at_eof())
         ;
     // Parse
     auto result = parser.parse(argc, argv);
@@ -20,6 +22,8 @@ int main(int argc, char *argv[]) {
     std::cout << "   int: " << cliargs::to_string(result["int"].as<int>()) << std::endl;
     std::cout << "string: " << cliargs::to_string(result["string"].as<std::string>()) << std::endl;
     std::cout << "vector: " << cliargs::to_string(result["vector"].as<std::vector<float>>()) << std::endl;
+    std::cout << "group1: " << cliargs::to_string(result["group1"].as<std::vector<char *>>()) << std::endl;
+    std::cout << "group2: " << cliargs::to_string(result["group2"].as<std::vector<char *>>()) << std::endl;
     std::cout << "  tail: " << cliargs::to_string(result.tail().argv, result.tail().argc) << std::endl;
     return 0;
 }

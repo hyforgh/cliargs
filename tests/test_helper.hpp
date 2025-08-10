@@ -41,7 +41,7 @@ bool cli_error_like(const std::list<std::string> &err_list, const std::string &r
 #define CLI_TEST_DEFINE_NORM_ARG(data_type, attr, ...)                  \
     cliargs::Parser parser;                                             \
     parser.add_args()                                                   \
-        ("arg_name", "", cliargs::value<PP_REMOVE_PARENS(data_type)>() \
+        ("arg_name", "", cliargs::value<PP_REMOVE_PARENS(data_type)>()  \
             PP_REMOVE_PARENS(attr));                                    \
     Argv argv({"cli_test", __VA_ARGS__});                               \
     auto result = parser.parse(argv.argc(), argv.argv());               \

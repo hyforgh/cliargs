@@ -1,3 +1,10 @@
+## 1.4.0
+* new feature
+    1. support nesting (`cliargs::Result::tail()` and `stop_at_eof()`)
+
+* fix bug
+    1. fix bugs casued by `--`
+
 ## 1.3.0
 * new feature
     1. argument name alias

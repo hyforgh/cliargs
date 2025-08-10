@@ -68,9 +68,16 @@ private:
 };
 #endif // CLIARGS_NO_EXCEPTION
 
+enum __SenseMode {
+    __SM_NO = 0,
+    __SM_EOF,
+    __SM_NAME,
+};
+
 class ArgParser {
 public:
-    ArgParser(char *argv[], int argc, std::list<std::string> &err_list, bool sensitive_mode, void *context);
+    ArgParser(char *argv[], int argc, std::list<std::string> &err_list
+        , __SenseMode sense_mode, void *context);
     virtual ~ArgParser() {}
     virtual void domain_begin(std::string type_name , std::string member_prefix = "."
         , std::string member_suffix = "");
@@ -86,9 +93,10 @@ protected:
     int _argc;
     char **_argv;
     std::list<std::string> &_err_list;
-    bool _sensitive_mode;
+    int _sense_mode;
     void *_context;
     int _argi;
+    int _vali;
     bool _is_optional;
     int _at_least;
     int _at_most;
@@ -446,19 +454,19 @@ bool __is_digital(const char *p) {
     return std::regex_match(p, s_reg_digital);
 }
 
-bool __is_arg_name_short(const char *p) {
-    return p && p[0] == '-' && p[1] && p[1] != '-' && !__is_digital(p + 1);
-}
-bool __is_arg_name_long(const char *p) {
-    return p && p[0] == '-' && p[1] == '-' && p[2];
-}
+struct __ParseResult {
+    int argi;
+    int vali;
+    bool is_terminated;
+};
 
 class __ArgParser : public ArgParser {
 public:
-    __ArgParser(char *argv[], int argc, std::list<std::string> &err_list, bool sensitive_mode, void *context)
-            : ArgParser(argv, argc, err_list, sensitive_mode, context) {
+    __ArgParser(char *argv[], int argc, std::list<std::string> &err_list
+                , __SenseMode sense_mode, void *context)
+            : ArgParser(argv, argc, err_list, sense_mode, context) {
     }
-    int submit(const std::string &name) {
+    __ParseResult submit(const std::string &name) {
         // if (_argc < _at_least) {
         //     std::stringstream ss;
         //     if (!name.empty()) {
@@ -473,7 +481,7 @@ public:
         //     ss << " value(s), but got " << _argi;
         //     _err_list.emplace_back(ss.str());
         // }
-        return _argi;
+        return __ParseResult {_argi, _vali, _is_terminated};
     }
     int at_least() const {
         return _at_least;
@@ -509,7 +517,7 @@ template <typename T>
 const std::string &type_traits<T>::name() {
     static std::string s_name = []() -> std::string {
         std::list<std::string> err_tmp;
-        __ArgParser parser(nullptr, 0, err_tmp, false, nullptr);
+        __ArgParser parser(nullptr, 0, err_tmp, __SM_NO, nullptr);
         T arg_value;
         __parse_by_parser(arg_value, parser, "");
         return parser.type_name();
@@ -523,8 +531,9 @@ public:
     virtual bool valid() const = 0;
     virtual const void *context() const = 0;
     virtual unsigned appear_count() const = 0;
-    virtual int appear(char *argv[], int argc, std::list<std::string> &err_list, bool sensitive_mode) = 0;
+    virtual int appear(char *argv[], int argc, std::list<std::string> &err_list) = 0;
     virtual std::string finish() = 0;
+    virtual __SenseMode set_sense_mode(__SenseMode mode) = 0;
 }; // __ArgDataI
 
 class __ArgAttrI : public std::enable_shared_from_this<__ArgAttrI> {
@@ -540,6 +549,7 @@ private:
     virtual std::string get_constraint_desc() const = 0;
     virtual std::string get_data_desc() const = 0;
     virtual bool is_hidden() const = 0;
+    virtual __SenseMode sense_mode() const = 0;
 }; // __ArgAttrI
 
 template <typename>
@@ -631,6 +641,23 @@ std::string to_string(const T &data
 template <typename... Targs>
 std::string to_string(const std::tuple<Targs...> &data
         , const std::string &delimiter = ",", const std::string &gap = " ");
+template <typename T>
+std::string to_string(T *array, size_t count
+        , const std::string &delimiter = ",", const std::string &gap = " ") {
+    std::stringstream ss;
+    ss << "[";
+    bool is_first = true;
+    for (size_t i = 0; i < count; ++i) {
+        if (is_first) {
+            is_first = false;
+        } else {
+            ss << delimiter << gap;
+        }
+        ss << to_string(array[i], delimiter, gap);
+    }
+    ss << "]";
+    return ss.str();
+}
 
 template <typename T, typename Ta>
 struct __to_string {
@@ -782,9 +809,12 @@ std::string ____tuple_to_string<1, std::tuple<Targs...>>::from(
     return to_string(std::get<0>(data), delimiter, gap);
 }
 
-ArgParser::ArgParser(char *argv[], int argc, std::list<std::string> &err_list, bool sensitive_mode, void *context)
-        : _argc(argc), _argv(argv), _err_list(err_list), _sensitive_mode(sensitive_mode), _context(context)
-        , _argi(0), _is_optional(false), _at_least(0), _at_most(0), _is_terminated(false) {
+ArgParser::ArgParser(char *argv[], int argc, std::list<std::string> &err_list
+            , __SenseMode sense_mode, void *context)
+        : _argc(argc), _argv(argv), _err_list(err_list)
+        , _sense_mode(sense_mode), _context(context)
+        , _argi(0), _vali(0), _is_optional(false), _at_least(0), _at_most(0)
+        , _is_terminated(false) {
 }
 void ArgParser::domain_begin(std::string type_name
         , std::string member_name_prefix
@@ -811,12 +841,16 @@ bool ArgParser::assign(Tm &value, const std::string &name, Tm default_value) {
     ++_at_most;
     constexpr auto is_tm_string = std::is_convertible<Tm, std::string>::value;
     char *psz = nullptr;
-    if (!_is_terminated && _at_most <= _argc \
-            && (_argv[_argi][0] != '-'                /*normal string*/     \
-                || __is_digital(_argv[_argi] + 1)     /*negative numberic*/ \
-                || (!_sensitive_mode && is_tm_string) /*force assigning*/   \
+    if (_at_most <= _argc) {
+        psz = _argv[_argi];
+    }
+    if (!_is_terminated && _at_most <= _argc                                                    \
+            && (psz[0] != '-'                                             /*normal string*/     \
+                || __is_digital(psz + 1)                                  /*negative numberic*/ \
+                || (_sense_mode == __SM_NO && is_tm_string)               /*force assigning*/   \
+                || (_sense_mode == __SM_EOF && (psz[1] != '-' || psz[2])) /*stop at EOF: '--'*/ \
             )) {
-        psz = _argv[_argi++];
+        ++_argi;
     } else {
         _is_terminated = true;
         if (_is_optional) {
@@ -831,9 +865,10 @@ bool ArgParser::assign(Tm &value, const std::string &name, Tm default_value) {
         }
         return false;
     }
+    ++_vali;
     // maybe psz is a degital
     std::list<std::string> err_tmp;
-    if (_sensitive_mode && psz[0] == '\\') {
+    if (_sense_mode != __SM_NO && psz[0] == '\\') {
         ++psz;
     }
     __parse_by_format(value, psz, concat_name(name), err_tmp, get_context(), psz);
@@ -961,6 +996,7 @@ public:
             , _dim_1_at_most(__get_max_capacity<Tg, Ta>::value)
             , _context(nullptr)
             , _is_hidden(false)
+            , _sense_mode(__SM_NO)
     {
         static_assert(std::is_same<Ta, typename __get_cli_value_type<Ta>::type>::value
             , "Too many nested levels of containers");
@@ -1054,6 +1090,9 @@ protected:
     bool is_hidden() const override {
         return _is_hidden;
     }
+    __SenseMode sense_mode() const override {
+        return _sense_mode;
+    }
 
 private:
     unsigned dim_0_at_least() const {
@@ -1131,6 +1170,9 @@ protected:
     void set_hide() {
         _is_hidden = true;
     }
+    void set_stop_at_eof() {
+        _sense_mode = __SM_EOF;
+    }
 protected:
     bool _is_positional;
     bool _has_default_value;
@@ -1142,6 +1184,7 @@ protected:
     void *_context;
     bool _is_hidden;
     T _default_value;
+    __SenseMode _sense_mode;
     T_implicit_value _implicit_value;
     std::function<bool (const Ta &)> _match_choices;
     std::string _match_choices_desc;
@@ -1156,7 +1199,8 @@ class __ArgDataT : public __ArgDataI {
     typedef typename __get_cli_value_type<T>::type Tg;
 public:
     __ArgDataT(const __ArgAttrT<T> &arg_attr)
-        : _arg_attr(arg_attr), _appear_count(0), _data_count(0) {
+        : _arg_attr(arg_attr), _appear_count(0), _data_count(0)
+        , _sense_mode(__SM_NO) {
     }
     bool valid() const override {
         return _appear_count > 0;
@@ -1167,8 +1211,13 @@ public:
     unsigned appear_count() const override {
         return _appear_count;
     }
-    int appear(char *argv[], int argc, std::list<std::string> &err_list, bool sensitive_mode) override;
+    int appear(char *argv[], int argc, std::list<std::string> &err_list) override;
     std::string finish() override;
+    __SenseMode set_sense_mode(__SenseMode mode)  override {
+        auto tmp = _sense_mode;
+        _sense_mode = mode;
+        return tmp;
+    }
 public:
     const T &data() const {
         return _data;
@@ -1182,6 +1231,7 @@ protected:
     unsigned _appear_count;
     unsigned _data_count;
     T _data;
+    __SenseMode _sense_mode;
 }; // __ArgDataT
 
 template <typename T, typename Tg, typename Ta>
@@ -1313,6 +1363,11 @@ struct __get_cli_atom_type : public ____get_cli_atom_type<T, __is_cli_scalar<T>:
         __ArgAttrT<T>::set_hide();                                                      \
         return std::static_pointer_cast<ArgAttr<T>>(__ArgAttrT<T>::shared_from_this()); \
     }
+#define __ArgAttr_stop_at_eof()                                                         \
+    std::shared_ptr<ArgAttr<T>> stop_at_eof() {                                         \
+        __ArgAttrT<T>::set_stop_at_eof();                                               \
+        return std::static_pointer_cast<ArgAttr<T>>(__ArgAttrT<T>::shared_from_this()); \
+    }
 
 template <typename T, __AtomType AT>
 class __ArgAttrAT;
@@ -1383,6 +1438,7 @@ public:
     __ArgAttr_default_value()
     __ArgAttr_examine()
     __ArgAttr_context()
+    __ArgAttr_stop_at_eof()
     std::shared_ptr<ArgAttr<T>> choices(std::unordered_set<std::string> values) {
         _choices = std::move(values);
         __ArgAttrT<T>::set_match_choices(
@@ -1423,6 +1479,7 @@ public:
     __ArgAttr_default_value()
     __ArgAttr_examine()
     __ArgAttr_context()
+    __ArgAttr_stop_at_eof()
 };
 template <typename T>
 class __ArgAttrAT<T, __AT_STRUCT> : public __ArgAttrT<T> {
@@ -1434,6 +1491,7 @@ public:
     __ArgAttr_default_value()
     __ArgAttr_examine()
     __ArgAttr_context()
+    __ArgAttr_stop_at_eof()
 };
 
 template <typename T, typename Tg, typename Ta>
@@ -1467,6 +1525,7 @@ public:
         return std::static_pointer_cast<ArgAttr<T>>(__ArgAttrT<T>::shared_from_this());
     }
 };
+
 template <typename T, typename Tg, typename Ta>
 class __ArgAttrLT : public __ArgAttrGT<T, Tg, Ta> {
 public:
@@ -1619,6 +1678,13 @@ private:
 
 class Result {
 public:
+    struct Tail {
+        int argc;
+        char **argv;
+    public:
+        Tail() : argc(0), argv(nullptr) {}
+    };
+public:
     const ArgData &operator [](const std::string &arg_name) {
         auto it = _arg_data_map.find(arg_name);
         if (it == _arg_data_map.end()) {
@@ -1633,12 +1699,20 @@ public:
         }
         return it->second;
     }
+    const Tail tail() const {
+        return _arg_tail;
+    }
 private:
     friend class Parser;
     void add_data(const std::string &name, ArgData data) {
         _arg_data_map.insert(std::make_pair(name, std::move(data)));
     }
+    void set_tail(int argc, char *argv[]) {
+        _arg_tail.argc = argc;
+        _arg_tail.argv = argv;
+    }
 private:
+    Tail _arg_tail;
     std::unordered_map<std::string, ArgData> _arg_data_map;
 }; // Result
 
@@ -1649,7 +1723,7 @@ private:
 public:
     explicit Parser(std::string app_name = "<THIS>", std::string app_desc = "")
         : _app_name(std::move(app_name)), _app_desc(std::move(app_desc))
-        , _allow_unknown(false), _sensitive_mode(false)
+        , _allow_unknown(false), _sense_mode(__SM_NO)
         , _help_width(0), _concise_help(false) {
     }
     Parser &allow_unknown() {
@@ -1657,7 +1731,7 @@ public:
         return *this;
     }
     Parser &sensitive_mode() {
-        _sensitive_mode = true;
+        _sense_mode = __SM_NAME;
         return *this;
     }
     Parser &set_width(unsigned width) {
@@ -1684,7 +1758,7 @@ public:
     }
     void print_help(const std::string &indent = ""
             , std::ostream &os = std::cout) const;
-    Result parse(int argc, char *argv[]);
+    Result parse(int argc, char *argv[], unsigned start_index = 1);
 
 private:
     template <typename T>
@@ -1734,7 +1808,7 @@ private:
     std::string _app_name;
     std::string _app_desc;
     bool _allow_unknown;
-    bool _sensitive_mode;
+    __SenseMode _sense_mode;
     int _help_width;
     bool _concise_help;
     std::list<ArgDesc> _arg_desc_list;
@@ -1923,54 +1997,51 @@ void Parser::print_help(const std::string &indent, std::ostream &os) const {
 
 template <typename Ta>
 struct __AtMostValuesOf {
-    static int at_most(bool sensitive_mode) {
-        static auto s_at_most = [](bool sensitive_mode) -> int {
+    static int at_most(__SenseMode sense_mode) {
+        static auto s_at_most = [](__SenseMode sense_mode) -> int {
             std::list<std::string> err_tmp;
-            __ArgParser parser(nullptr, 0, err_tmp, sensitive_mode, nullptr);
+            __ArgParser parser(nullptr, 0, err_tmp, sense_mode, nullptr);
             Ta arg_value;
             __parse_by_parser(arg_value, parser, "");
             return parser.at_most();
-        }(sensitive_mode);
+        }(sense_mode);
         return s_at_most;
     }
 };
 
-struct __ParseResult {
-    int argi;
-    int data_count;
-};
 template <typename T>
 struct __DataParser {
     static __ParseResult parse(T &value, char *argv[], int argc
-            , std::list<std::string> &err_list, bool sensitive_mode
+            , std::list<std::string> &err_list, __SenseMode sense_mode
             , void *context, void *data, unsigned at_least, unsigned at_most
             , std::function<std::string(T &, void *)> examine
             , std::function<const typename __get_implicit_value_type<T>::type &()> get_implicit_value
             , const std::string &name = ""
             ) {
         std::list<std::string> err_tmp;
-        __ArgParser parser(argv, argc, err_tmp, sensitive_mode, context);
+        __ArgParser parser(argv, argc, err_tmp, sense_mode, context);
         if (at_least < 1) {
             parser.set_optional();
         }
         __parse_by_parser(value, parser, name);
-        auto i = parser.submit(name);
-        if (i || at_least > 0) {
+        auto ret = parser.submit(name);
+        if (ret.vali || at_least > 0) {
             err_list.splice(err_list.end(), err_tmp);
         } else if (get_implicit_value) {
             value = get_implicit_value();
+            ret.vali = 1;
         } else {
             err_list.splice(err_list.end(), err_tmp);
-            return __ParseResult{i, 0};
+            return ret;
         }
-        if ((i || get_implicit_value) && examine) {
+        if ((ret.vali || get_implicit_value) && examine) {
             auto err_detail = examine(value, data);
             if (!err_detail.empty()) {
-                static auto item_at_most = __AtMostValuesOf<T>::at_most(sensitive_mode);
+                static auto item_at_most = __AtMostValuesOf<T>::at_most(sense_mode);
                 std::stringstream ss;
                 ss << "invalid value";
                 if (item_at_most > 1) {
-                    ss << " group '" << to_string(std::vector<char *>(argv, argv + i))
+                    ss << " group '" << to_string(std::vector<char *>(argv, argv + ret.vali))
                        << " (as type " << type_traits<T>::name() << ")";
                 } else {
                     ss << " '" << *argv << "'";
@@ -1979,13 +2050,13 @@ struct __DataParser {
                 err_list.emplace_back(ss.str());
             }
         }
-        return __ParseResult{i, 1};
+        return ret;
     }
 };
 template <typename... Targs>
 struct __DataParser<std::tuple<Targs...>> {
     static __ParseResult parse(std::tuple<Targs...> &value, char *argv[], int argc
-            , std::list<std::string> &err_list, bool sensitive_mode
+            , std::list<std::string> &err_list, __SenseMode sense_mode
             , void *context, void *data, unsigned at_least, unsigned at_most
             , std::function<std::string(std::tuple<Targs...> &, void *)> examine
             , std::function<const std::tuple<Targs...> &()> get_implicit_value
@@ -1997,7 +2068,7 @@ struct __DataParser<std::vector<Tg>> {
     typedef std::vector<Tg> T;
     typedef typename __get_cli_value_type<Tg>::type Ta;
     static __ParseResult parse(T &value, char *argv[], int argc
-            , std::list<std::string> &err_list, bool sensitive_mode
+            , std::list<std::string> &err_list, __SenseMode sense_mode
             , void *context, void *data, unsigned at_least, unsigned at_most
             , std::function<std::string(Ta &, void *)> examine
             , std::function<const typename __get_implicit_value_type<T>::type &()> get_implicit_value
@@ -2007,7 +2078,7 @@ struct __DataParser<std::vector<Tg>> {
 template <typename Tmap, typename Tk, typename Tg>
 struct ____MapParser {
     static __ParseResult parse(Tmap &value, char *argv[], int argc
-            , std::list<std::string> &err_list, bool sensitive_mode
+            , std::list<std::string> &err_list, __SenseMode sense_mode
             , void *context, void *data, unsigned at_least, unsigned at_most
             , std::function<std::string(typename __get_cli_value_type<Tg>::type &, void *)> examine
             , std::function<const typename __get_implicit_value_type<Tg>::type &()> implicit_value
@@ -2020,23 +2091,26 @@ template <typename Tk, typename Ta>
 struct __DataParser<std::unordered_map<Tk, Ta>> : public ____MapParser<std::unordered_map<Tk, Ta>, Tk, Ta> {};
 template <std::size_t N, typename... Targs>
 struct ____TupleParser {
-    static int parse(std::tuple<Targs...> &value, char *argv[], int argc
-            , std::list<std::string> &err_list, bool sensitive_mode
+    static __ParseResult parse(std::tuple<Targs...> &value, char *argv[], int argc
+            , std::list<std::string> &err_list, __SenseMode sense_mode
             , void *context, void *data, unsigned at_least, unsigned at_most
             , std::function<std::string(std::tuple<Targs...> &, void *)> examine
             , std::function<const std::tuple<Targs...> &()> get_implicit_value
             , const std::string &name
             ) {
-        int i = 0;
+        __ParseResult result;
         if (N) {
-            i = ____TupleParser<N - 1, Targs...>::parse(value, argv, argc, err_list, sensitive_mode
+            result = ____TupleParser<N - 1, Targs...>::parse(value, argv, argc, err_list, sense_mode
                 , context, data, at_least, at_most, nullptr, get_implicit_value, name);
+            if (result.is_terminated) {
+                return result;
+            }
         }
         std::list<std::string> err_tmp;
         auto ret = __DataParser<typename std::tuple_element<N, std::tuple<Targs...>>::type>::parse(
-            std::get<N>(value), argv + i
-            , ((i >= (int)N && argc > (int)N) ? argc - i : 0)
-            , err_tmp, sensitive_mode
+            std::get<N>(value), argv + result.argi
+            , ((result.argi >= (int)N && argc > (int)N) ? argc - result.argi : 0)
+            , err_tmp, sense_mode
             , context, data, (at_least > N ? 1 : 0), 1, nullptr, nullptr
             , name + "<" + to_string(N) + ">");
         if (ret.argi || at_least > N) {
@@ -2044,14 +2118,16 @@ struct ____TupleParser {
         } else if (get_implicit_value) {
             std::get<N>(value) = std::get<N>(get_implicit_value());
         }
-        i += ret.argi;
-        return i;
+        result.argi += ret.argi;
+        result.vali += ret.vali;
+        result.is_terminated = ret.is_terminated;
+        return result;
     }
 };
 template <typename... Targs>
 struct ____TupleParser<0, Targs...> {
-    static int parse(std::tuple<Targs...> &value, char *argv[], int argc
-            , std::list<std::string> &err_list, bool sensitive_mode
+    static __ParseResult parse(std::tuple<Targs...> &value, char *argv[], int argc
+            , std::list<std::string> &err_list, __SenseMode sense_mode
             , void *context, void *data, unsigned at_least, unsigned at_most
             , std::function<std::string(std::tuple<Targs...> &, void *)> examine
             , std::function<const std::tuple<Targs...> &()> get_implicit_value
@@ -2059,28 +2135,28 @@ struct ____TupleParser<0, Targs...> {
             ) {
         std::list<std::string> err_tmp;
         auto ret = __DataParser<typename std::tuple_element<0, std::tuple<Targs...>>::type>::parse(
-            std::get<0>(value), argv, argc, err_tmp, sensitive_mode
+            std::get<0>(value), argv, argc, err_tmp, sense_mode
             , context, data, (at_least > 0 ? 1 : 0), 1, nullptr, nullptr, name + "<0>"
             );
-        if (ret.argi || at_least > 0) {
+        if (ret.vali || at_least > 0) {
             err_list.splice(err_list.end(), err_tmp);
         } else if (get_implicit_value) {
             std::get<0>(value) = std::get<0>(get_implicit_value());
         }
-        return ret.argi;
+        return ret;
     }
 };
 template <typename... Targs>
 __ParseResult __DataParser<std::tuple<Targs...>>::parse(std::tuple<Targs...> &value, char *argv[], int argc
-        , std::list<std::string> &err_list, bool enable_espace
+        , std::list<std::string> &err_list, __SenseMode sense_mode
         , void *context, void *data, unsigned at_least, unsigned at_most
         , std::function<std::string(std::tuple<Targs...> &, void *)> examine
         , std::function<const std::tuple<Targs...> &()> get_implicit_value
         , const std::string &name
         ) {
     std::list<std::string> err_tmp;
-    auto i = ____TupleParser<sizeof ...(Targs) - 1, Targs...>::parse(
-        value, argv, argc, err_tmp, enable_espace
+    auto ret = ____TupleParser<sizeof ...(Targs) - 1, Targs...>::parse(
+        value, argv, argc, err_tmp, sense_mode
         , context, data, at_least, at_most, examine, get_implicit_value
         , (name.empty() ? std::string("tuple") : name)
         );
@@ -2094,55 +2170,57 @@ __ParseResult __DataParser<std::tuple<Targs...>>::parse(std::tuple<Targs...> &va
     } else {
         err_list.splice(err_list.end(), err_tmp);
     }
-    return __ParseResult{i, i ? 1 : 0};
+    return __ParseResult{ret.argi, ret.vali ? 1 : 0, ret.is_terminated};
 }
 template <typename Tg, typename Ta>
 struct ____VectorParser {
     static __ParseResult parse(std::vector<Tg> &value, char *argv[], int argc
-            , std::list<std::string> &err_list, bool sensitive_mode
+            , std::list<std::string> &err_list, __SenseMode sense_mode
             , void *context, void *data, unsigned at_least, unsigned at_most
             , std::function<std::string(Ta &, void *)> examine
             , std::function<const typename __get_implicit_value_type<std::vector<Tg>>::type &()> get_implicit_value
             , const std::string &name
             ) {
         Tg arg_value;
-        auto ret = __DataParser<Tg>::parse(arg_value, argv, argc, err_list, sensitive_mode
+        auto ret = __DataParser<Tg>::parse(arg_value, argv, argc, err_list, sense_mode
             , context, data, at_least, at_most, examine, get_implicit_value, name);
         value.emplace_back(std::move(arg_value));
-        return __ParseResult{ret.argi, (int)value.size()};
+        return __ParseResult{ret.argi, (int)value.size(), ret.is_terminated};
     }
 };
 template <typename Ta>
 struct ____VectorParser<Ta, Ta> {
     static __ParseResult parse(std::vector<Ta> &value, char *argv[], int argc
-            , std::list<std::string> &err_list, bool sensitive_mode
+            , std::list<std::string> &err_list, __SenseMode sense_mode
             , void *context, void *data, unsigned at_least, unsigned at_most
             , std::function<std::string(Ta &, void *)> examine
             , std::function<const typename __get_implicit_value_type<std::vector<Ta>>::type &()> get_implicit_value
             , const std::string &name
             ) {
-        static auto item_at_most = __AtMostValuesOf<Ta>::at_most(sensitive_mode);
+        static auto item_at_most = __AtMostValuesOf<Ta>::at_most(sense_mode);
         int i = 0;
         unsigned n = 0;
+        bool is_terminated = false;
         while (n < at_most && value.size() < at_most) {
             Ta arg_value;
             std::list<std::string> err_tmp;
-            auto ret = __DataParser<Ta>::parse(arg_value, argv + i, argc - i, err_tmp, sensitive_mode
+            auto ret = __DataParser<Ta>::parse(arg_value, argv + i, argc - i, err_tmp, sense_mode
                 , context, data, (n < at_least ? 1 : 0), 1, examine, nullptr
                 , (name + "[" + to_string(value.size()) + "]"));
+            i += ret.argi;
+            is_terminated = ret.is_terminated;
             err_list.splice(err_list.end(), err_tmp);
-            if (!ret.argi) {
+            if (!ret.vali) {
                 break;
             }
             value.emplace_back(std::move(arg_value));
-            i += ret.argi;
             ++n;
-            if (item_at_most > 1) {
+            if (item_at_most > 1 || ret.is_terminated) {
                 break;
             }
         }
         if (value.size() >= at_most) {
-            return __ParseResult{i, (int)value.size()};
+            return __ParseResult{i, (int)value.size(), is_terminated};
         }
         if (n >= at_least && get_implicit_value) {
             auto &implicit_value = get_implicit_value();
@@ -2150,35 +2228,35 @@ struct ____VectorParser<Ta, Ta> {
                 value.emplace_back(implicit_value[n]);
             }
         }
-        return __ParseResult{i, (int)value.size()};
+        return __ParseResult{i, (int)value.size(), is_terminated};
     }
 };
 template <typename... Targs>
 struct ____VectorParser<std::tuple<Targs...>, std::tuple<Targs...>> {
     static __ParseResult parse(std::vector<std::tuple<Targs...>> &value, char *argv[], int argc
-            , std::list<std::string> &err_list, bool sensitive_mode
+            , std::list<std::string> &err_list, __SenseMode sense_mode
             , void *context, void *data, unsigned at_least, unsigned at_most
             , std::function<std::string(std::tuple<Targs...> &, void *)> examine
             , std::function<const std::tuple<Targs...> &()> get_implicit_value
             , const std::string &name
             ) {
         std::tuple<Targs...> arg_value;
-        auto ret = __DataParser<std::tuple<Targs...>>::parse(arg_value, argv, argc, err_list, sensitive_mode
+        auto ret = __DataParser<std::tuple<Targs...>>::parse(arg_value, argv, argc, err_list, sense_mode
             , context, data, at_least, at_most, examine, get_implicit_value
             , name + "[" + to_string(value.size()) + "]");
         value.emplace_back(std::move(arg_value));
-        return __ParseResult{ret.argi, ret.argi ? 1 : 0};
+        return __ParseResult{ret.argi, ret.vali ? 1 : 0, ret.is_terminated};
     }
 };
 template <typename Tg>
 __ParseResult __DataParser<std::vector<Tg>>::parse(std::vector<Tg> &value, char *argv[], int argc
-        , std::list<std::string> &err_list, bool sensitive_mode
+        , std::list<std::string> &err_list, __SenseMode sense_mode
         , void *context, void *data, unsigned at_least, unsigned at_most
         , std::function<std::string(Ta &, void *)> examine
         , std::function<const typename __get_implicit_value_type<T>::type &()> get_implicit_value
         , const std::string &name
         ) {
-    return ____VectorParser<Tg, Ta>::parse(value, argv, argc, err_list, sensitive_mode, context, data
+    return ____VectorParser<Tg, Ta>::parse(value, argv, argc, err_list, sense_mode, context, data
         , at_least, at_most, examine, get_implicit_value, name);
 }
 template <typename Tmap, typename Tk, typename Tg, typename Ta>
@@ -2204,7 +2282,7 @@ struct ____MapInserter<Tmap, Tk, std::vector<Ta>, Ta> {
 };
 template <typename Tmap, typename Tk, typename Tg>
 __ParseResult ____MapParser<Tmap, Tk, Tg>::parse(Tmap &value, char *argv[], int argc
-        , std::list<std::string> &err_list, bool sensitive_mode
+        , std::list<std::string> &err_list, __SenseMode sense_mode
         , void *context, void *data, unsigned at_least, unsigned at_most
         , std::function<std::string(typename __get_cli_value_type<Tg>::type &, void *)> examine
         , std::function<const typename __get_implicit_value_type<Tg>::type &()> implicit_value
@@ -2214,12 +2292,12 @@ __ParseResult ____MapParser<Tmap, Tk, Tg>::parse(Tmap &value, char *argv[], int 
         std::stringstream ss;
         ss << "a(n) '" << type_traits<Tk>::name() << "' value is required as '" + name + ".key'";
         err_list.emplace_back(ss.str());
-        return __ParseResult{0, 0};
+        return __ParseResult{0, 0, true};
     }
     int i = 0;
     Tk map_key;
     std::list<std::string> err_key;
-    auto ret = __DataParser<Tk>::parse(map_key, argv + i, argc - i, err_key, sensitive_mode
+    auto ret = __DataParser<Tk>::parse(map_key, argv + i, argc - i, err_key, sense_mode
         , context, data, 1, 1, nullptr, nullptr, name + ".key");
     i += ret.argi;
     if (!err_key.empty()) {
@@ -2227,23 +2305,24 @@ __ParseResult ____MapParser<Tmap, Tk, Tg>::parse(Tmap &value, char *argv[], int 
     }
     Tg map_value;
     std::list<std::string> err_value;
-    ret = __DataParser<Tg>::parse(map_value, argv + i, argc - i, err_value, sensitive_mode
+    ret = __DataParser<Tg>::parse(map_value, argv + i, ret.is_terminated ? 0 : (argc - i)
+        , err_value, sense_mode
         , context, data, at_least, at_most, examine, implicit_value
         , name + "[" + to_string(map_key) + "]");
     i += ret.argi;
     if (!err_value.empty()) {
         err_list.splice(err_list.end(), err_value);
-        return __ParseResult{i, 0};
+        return __ParseResult{i, 0, ret.is_terminated};
     }
     if (err_key.empty()) {
         ____MapInserter<Tmap, Tk, Tg, typename __get_cli_value_type<Tg>::type>::insert(
             value, name, map_key, map_value, err_list);
     }
-    return __ParseResult{i, 1};
+    return __ParseResult{i, 1, ret.is_terminated};
 }
 
 template <typename T>
-int __ArgDataT<T>::appear(char *argv[], int argc, std::list<std::string> &err_list, bool sensitive_mode) {
+int __ArgDataT<T>::appear(char *argv[], int argc, std::list<std::string> &err_list) {
     if (argc == -1) {
         argc = 1;
     } else if (argc > 0) {
@@ -2262,7 +2341,7 @@ int __ArgDataT<T>::appear(char *argv[], int argc, std::list<std::string> &err_li
         std::stringstream ss;
         ss << "too many appearances";
         T v_tmp;
-        auto ret = __DataParser<T>::parse(v_tmp, argv, argc, err_tmp, sensitive_mode
+        auto ret = __DataParser<T>::parse(v_tmp, argv, argc, err_tmp, _sense_mode
             , _arg_attr.get_context(), &v_tmp, dim_1_at_least, dim_1_at_most
             , nullptr, nullptr);
         while (i < argc && i < ret.argi) {
@@ -2283,7 +2362,7 @@ int __ArgDataT<T>::appear(char *argv[], int argc, std::list<std::string> &err_li
     if (_arg_attr.has_implicit_value()) {
         func_implicit_value = std::bind(&__ArgAttrT<T>::implicit_value, _arg_attr);
     }
-    auto ret = __DataParser<T>::parse(_data, argv, argc, err_tmp, sensitive_mode
+    auto ret = __DataParser<T>::parse(_data, argv, argc, err_tmp, _sense_mode
         , _arg_attr.get_context(), &_data, dim_1_at_least, dim_1_at_most
         , std::bind(&__ArgAttrT<T>::examine, _arg_attr, std::placeholders::_1, std::placeholders::_2)
         , func_implicit_value
@@ -2291,7 +2370,7 @@ int __ArgDataT<T>::appear(char *argv[], int argc, std::list<std::string> &err_li
     for (auto &it : err_tmp) {
         err_list.emplace_back(err_header + it);
     }
-    _data_count = ret.data_count;
+    _data_count = ret.vali;
     return ret.argi;
 }
 
@@ -2327,7 +2406,7 @@ std::string __ArgDataT<T>::finish() {
     return "";
 }
 
-Result Parser::parse(int argc, char *argv[]) {
+Result Parser::parse(int argc, char *argv[], unsigned start_index) {
     if (error()) {
         print_help();
         return Result();
@@ -2335,92 +2414,125 @@ Result Parser::parse(int argc, char *argv[]) {
     std::unordered_map<std::string, std::shared_ptr<__ArgDataI>> result_impl;
     std::vector<ArgDesc *> pos_arg_vec;
     pos_arg_vec.reserve(_arg_desc_list.size());
-    int i = 0;
+    int i = 0, reserve_size = (argc > (int)start_index) ? (argc - start_index) : 0;
     for (auto &it : _arg_desc_list) {
         if (it.attr()->is_positional()) {
             pos_arg_vec.emplace_back(&it);
         }
-        auto arg_data = it.attr()->create_data(argc - 1);
+        auto arg_data = it.attr()->create_data(reserve_size);
+        auto sm = it.attr()->sense_mode();
+        if (sm == __SM_NO) {
+            sm = _sense_mode;
+        }
+        arg_data->set_sense_mode(sm);
         result_impl.insert(std::make_pair(it.name(), arg_data));
         ++i;
     }
     size_t pos_arg_idx = 0;
     ArgDesc arg_desc_unknown(0, "", "", value<std::vector<const char *>>()
-        ->data_count(0, _sensitive_mode ? -1 : 1));
-    auto arg_data_unknown = arg_desc_unknown.attr()->create_data(argc - 1);
+        ->data_count(0, _sense_mode ? -1 : 1));
+    auto arg_data_unknown = arg_desc_unknown.attr()->create_data(reserve_size);
     std::string arg_name;
     std::shared_ptr<__ArgDataI> arg_data;
-    i = 1;
+    Result result;
+    bool after_eof = false;
+    i = start_index;
     while (i < argc) {
         auto p = argv[i];
-        char *binded_data[1] = {nullptr};
-        ArgDesc *desc = nullptr;
-        if (__is_arg_name_short(p)) {
-            int j = 1;
-            while (p[j] && p[j] != '=') {
-                arg_name = std::string("-") + p[j];
-                ++j;
-                if (p[j] == '=') {
-                    binded_data[0] = p + j + 1;
-                }
-                std::stringstream ss;
-                ss << "usage: arg['" << arg_name << "']";
-                auto it_desc = _arg_desc_dict.find(arg_name);
-                if (it_desc == _arg_desc_dict.end()) {
-                    if (!_allow_unknown) {
-                        ss << ": not supported";
-                        _err_list.emplace_back(ss.str());
-                    }
-                    arg_data = arg_data_unknown;
-                    continue;
-                }
-                desc = it_desc->second;
-                arg_data = result_impl[desc->name()];
-                if (!p[j] || p[j] == '=') {
-                    break;
-                }
-                std::list<std::string> detail_list;
-                arg_data->appear(nullptr, 0, detail_list, _sensitive_mode);
-                for (auto &it : detail_list) {
-                    _err_list.emplace_back(ss.str() + it);
-                }
-            }
-            ++i;
-        } else if (__is_arg_name_long(p)) {
-            arg_name = p;
-            auto j = arg_name.find('=');
-            if (j != arg_name.npos) {
-                binded_data[0] = p + j + 1;
-                arg_name = arg_name.substr(0, j);
-            }
-            auto it_desc = _arg_desc_dict.find(arg_name);
-            if (it_desc == _arg_desc_dict.end()) {
-                if (!_allow_unknown) {
-                    std::stringstream ss;
-                    ss << "usage: arg['" << arg_name << "']: not supported";
-                    _err_list.emplace_back(ss.str());
-                }
-                arg_data = arg_data_unknown;
-            } else {
-                desc = it_desc->second;
-                arg_data = result_impl[desc->name()];
-            }
-            ++i;
-        } else if (pos_arg_idx < pos_arg_vec.size() && pos_arg_vec[pos_arg_idx]) {
-            desc = pos_arg_vec[pos_arg_idx];
-            arg_name = desc->name();
-            arg_data = result_impl[arg_name];
-        } else {
-            std::stringstream ss;
-            ss << "usage: arg['" << arg_name << "']";
-            if (arg_data) {
-                ss << "[" << arg_data->appear_count() << "th appearance]";
-            }
-            ss << ": too many value '" << p << "'";
-            _err_list.emplace_back(ss.str());
-            ++i;
+        if (!p) {
             continue;
         }
+        ArgDesc *desc = nullptr;
+        char *binded_data[1] = {nullptr};
+        if (p[0] == '-' && !__is_digital(p + 1)) {
+            if (p[1] == '-') {
+                if (p[2]) {
+                    arg_name = p;
+                    auto j = arg_name.find('=');
+                    if (j != arg_name.npos) {
+                        binded_data[0] = p + j + 1;
+                        arg_name = arg_name.substr(0, j);
+                    }
+                    auto it_desc = _arg_desc_dict.find(arg_name);
+                    if (it_desc == _arg_desc_dict.end()) {
+                        if (!_allow_unknown) {
+                            std::stringstream ss;
+                            ss << "usage: arg['" << arg_name << "']: not supported";
+                            _err_list.emplace_back(ss.str());
+                        }
+                        arg_data = arg_data_unknown;
+                    } else {
+                        desc = it_desc->second;
+                        arg_data = result_impl[desc->name()];
+                    }
+                    ++i;
+                } else if (after_eof) {
+                    result.set_tail(argc - i, argv + i);
+                    break;
+                } else {
+                    ++i;
+                    after_eof = true;
+                    continue;
+                }
+            } else {
+                int j = 1;
+                while (p[j] && p[j] != '=') {
+                    arg_name = std::string("-") + p[j];
+                    ++j;
+                    if (p[j] == '=') {
+                        binded_data[0] = p + j + 1;
+                    }
+                    std::stringstream ss;
+                    ss << "usage: arg['" << arg_name << "']";
+                    auto it_desc = _arg_desc_dict.find(arg_name);
+                    if (it_desc == _arg_desc_dict.end()) {
+                        if (!_allow_unknown) {
+                            ss << ": not supported";
+                            _err_list.emplace_back(ss.str());
+                        }
+                        arg_data = arg_data_unknown;
+                        continue;
+                    }
+                    desc = it_desc->second;
+                    arg_data = result_impl[desc->name()];
+                    if (!p[j] || p[j] == '=') {
+                        break;
+                    }
+                    std::list<std::string> detail_list;
+                    arg_data->appear(nullptr, 0, detail_list);
+                    for (auto &it : detail_list) {
+                        _err_list.emplace_back(ss.str() + it);
+                    }
+                }
+                ++i;
+            }
+            if (after_eof && desc->attr()->sense_mode() != __SM_EOF) {
+                --i;
+                result.set_tail(argc - i, argv + i);
+                break;
+            }
+        } else {
+            if (after_eof) {
+                result.set_tail(argc - i, argv + i);
+                break;
+            }
+            if (pos_arg_idx < pos_arg_vec.size() && pos_arg_vec[pos_arg_idx]) {
+                desc = pos_arg_vec[pos_arg_idx];
+                arg_name = desc->name();
+                arg_data = result_impl[arg_name];
+            } else {
+                std::stringstream ss;
+                ss << "usage: arg['" << arg_name << "']";
+                if (arg_data) {
+                    ss << "[" << arg_data->appear_count() << "th appearance]";
+                }
+                ss << ": too many value '" << p << "'";
+                _err_list.emplace_back(ss.str());
+                ++i;
+                continue;
+            }
+        }
+        after_eof = false;
 
         if (desc && desc->attr()->is_positional()) {
             size_t k = 0;
@@ -2446,16 +2558,15 @@ Result Parser::parse(int argc, char *argv[]) {
         auto err_header = std::string("usage: arg['") + arg_name + "']";
         std::list<std::string> detail_list;
         if (binded_data[0]) {
-            arg_data->appear(binded_data, -1, detail_list, _sensitive_mode);
+            arg_data->appear(binded_data, -1, detail_list);
         } else {
-            i += arg_data->appear(argv + i, argc - i, detail_list, _sensitive_mode);
+            i += arg_data->appear(argv + i, argc - i, detail_list);
         }
         for (auto &it : detail_list) {
             _err_list.emplace_back(err_header + it);
         }
     }
 
-    Result result;
     for (auto &desc : _arg_desc_list) {
         auto arg_name = desc.name();
         auto &arg_data = result_impl[arg_name];

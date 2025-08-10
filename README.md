@@ -249,6 +249,19 @@ parser.add_args()
     );
 ```
 
+#### 2.6 支持参数嵌套
+##### 2.6.1 GNU 风格默认参数嵌套
+位于 `--` 后，且第一个字符串不是带有 `stop_at_eof()` 属性的命令行参数名的所有字符串将被放入 `cliargs::Result::tail()` 返回的 `Tail` 对象中
+```c++
+cliargs::Parser parser("MyProgram", "One line description of MyProgram");
+...
+auto result = parser.parse(argc, argv);
+...
+auto &tail = result.tail();
+```
+##### 2.6.2 扩展的嵌套参数
+给数据类型为 `std::vector<char *>` 或者 `std::vector<std::string>` 的命令行参数设置 `stop_at_eof` 属性，将使其能够吃入所有后续字符串，直到遇到终止符（`--`），如果需要将终止符（`--`）作为输入，则在其前面加入一个反斜杠（`\\`，在 shell 和 C++ 语言中，我们需要输入两个）即可
+
 ## 3. 命令行参数属性接口汇总
 属性接口包括“[通用属性接口](#通用属性接口)”、“[元数据类型特有属性接口](#元数据类型特有属性接口)”和“[容器类型特有属性接口](#容器类型特有属性接口)”。最终的组合类型的属性接口是**三者的并集**。
 
@@ -267,8 +280,9 @@ parser.add_args()
 |meta type|attributes|
 |---------|----------|
 |numerical|choices, ranges, range
-|string   |choices, regex
-|struct   |
+|string   |choices, stop_at_eof, regex
+|tuple    |stop_at_eof
+|struct   |stop_at_eof
 
 #### 3.3 容器类型特有属性接口
 |      |attribute|
@@ -308,6 +322,15 @@ parser.add_args()
 |`(std::string name, std::string desc, std::string alias="")`
 |`(char flag, std::string name, std::string desc, std::shared_ptr<ArgAttr<T>> attr, std::string alias="")`
 |`(std::string name, std::string desc, std::shared_ptr<ArgAttr<T>> attr, std::string alias="")`
+
+#### 3.7 cliargs::Result::tail()
+位于 `--` 后，且第一个字符串不是带有 `stop_at_eof()` 属性的命令行参数名的所有字符串将被放入 `cliargs::Result::tail()` 返回的 `Tail` 对象中
+```c++
+struct cliargs::Result::Tail {
+    int argc;
+    char **argv;
+};
+```
 
 ### 4. 其它
 #### 4.1 反向布尔参数
@@ -373,5 +396,5 @@ map<string, tuple<int, vector<float>>>
 #### 4.5 关于敏感模式
 在这种模式下：
 1. 当命令参数类型为字符串时，cliargs 会将以减号（`-`）开始的字符串（除了负数）当做命令行参数名称
-2. 如果需要输入以减号（`-`）开始的字符串作为字符串类型的命令行参数值，请在减号前添加反斜杠。cliargs 会自动去掉命令行参数值开头的一个反斜杠
+2. 如果需要输入以减号（`-`）开始的字符串作为字符串类型的命令行参数值，请在减号前添加反斜杠（`\\`，在 shell 和 C++ 语言中，我们需要输入两个）。cliargs 会自动去掉命令行参数值开头的第一个反斜杠（`\`）
 3. **在这种模式下，在某些情况下会违背 GNU 习惯**

@@ -1,6 +1,6 @@
 #include "cliargs.hpp"
 
-typedef std::tuple<std::string, uint64_t, uint32_t> MyTuple;
+typedef std::tuple<std::string, uint64_t, uint32_t, std::string> MyTuple;
 
 int main(int argc, char *argv[]) {
     //  Create a 'cliargs::Parser' instance
@@ -16,11 +16,13 @@ int main(int argc, char *argv[]) {
             )
         ('m', "map", "Load data from file. usage `--map key file_name [offset [size]]`",
             cliargs::value<std::map<std::string, MyTuple>>()
+            ->stop_at_eof()
             )
         ("tail", "Load data from file. usage `--tail file_name [offset [size]]`",
             cliargs::value<MyTuple>()
-            ->implicit_value({"data.bin", 0x10, 0})
+            ->implicit_value({"data.bin", 0x10, 0, "test"})
             ->examine([](MyTuple &obj) { return !std::get<0>(obj).empty(); }, "第一个元素不能为空")
+            ->stop_at_eof()
             )
         ;
     // Parse
@@ -30,10 +32,11 @@ int main(int argc, char *argv[]) {
         return parser.error() ? -1 : 0;
     }
     // Use result
-    std::cout << "scalar: " << cliargs::to_string(result["scalar"].as<MyTuple>()) << std::endl;
+    std::cout << "  scalar: " << cliargs::to_string(result["scalar"].as<MyTuple>()) << std::endl;
     std::vector<MyTuple> load = result["vector"].as<std::vector<MyTuple>>();
-    std::cout << "vector: " << cliargs::to_string(load) << std::endl;
-    std::cout << "scalar: " << cliargs::to_string(result["map"].as<std::map<std::string, MyTuple>>()) << std::endl;
-    std::cout << "tail: " << cliargs::to_string(result["tail"].as<MyTuple>()) << std::endl;
+    std::cout << "  vector: " << cliargs::to_string(load) << std::endl;
+    std::cout << "  scalar: " << cliargs::to_string(result["map"].as<std::map<std::string, MyTuple>>()) << std::endl;
+    std::cout << "implicit: " << cliargs::to_string(result["tail"].as<MyTuple>()) << std::endl;
+    std::cout << "    tail: " << cliargs::to_string(result.tail().argv, result.tail().argc) << std::endl;
     return 0;
 }
