@@ -52,7 +52,7 @@ SOFTWARE.
 namespace cliargs {
 
 #define CLIARGS_VERSION_MAJOR 1
-#define CLIARGS_VERSION_MINOR 3
+#define CLIARGS_VERSION_MINOR 4
 #define CLIARGS_VERSION_PATCH 0
 
 #ifndef CLIARGS_NO_EXCEPTION
@@ -1699,7 +1699,7 @@ public:
         }
         return it->second;
     }
-    const Tail tail() const {
+    const Tail &tail() const {
         return _arg_tail;
     }
 private:
