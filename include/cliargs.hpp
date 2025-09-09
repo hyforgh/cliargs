@@ -534,6 +534,7 @@ public:
     virtual int appear(char *argv[], int argc, std::list<std::string> &err_list) = 0;
     virtual std::string finish() = 0;
     virtual __SenseMode set_sense_mode(__SenseMode mode) = 0;
+    virtual bool eat_anything() const = 0;
 }; // __ArgDataI
 
 class __ArgAttrI : public std::enable_shared_from_this<__ArgAttrI> {
@@ -1197,6 +1198,7 @@ protected:
 template <typename T>
 class __ArgDataT : public __ArgDataI {
     typedef typename __get_cli_value_type<T>::type Tg;
+    typedef typename __get_cli_value_type<Tg>::type Ta;
 public:
     __ArgDataT(const __ArgAttrT<T> &arg_attr)
         : _arg_attr(arg_attr), _appear_count(0), _data_count(0)
@@ -1213,10 +1215,13 @@ public:
     }
     int appear(char *argv[], int argc, std::list<std::string> &err_list) override;
     std::string finish() override;
-    __SenseMode set_sense_mode(__SenseMode mode)  override {
+    __SenseMode set_sense_mode(__SenseMode mode) override {
         auto tmp = _sense_mode;
         _sense_mode = mode;
         return tmp;
+    }
+    bool eat_anything()  const override {
+        return std::is_convertible<Ta, std::string>::value && _sense_mode != __SM_NAME;
     }
 public:
     const T &data() const {
@@ -1951,9 +1956,7 @@ void Parser::print_help(const std::string &indent, std::ostream &os) const {
             os << " (positional)";
         }
         os << "\n";
-        if (_concise_help) {
-            os << "\n";
-        } else {
+        if (!_concise_help) {
             auto data_desc = attr->get_data_desc();
             if (!data_desc.empty()) {
                 os << indent  << indent_inner
@@ -2433,7 +2436,6 @@ Result Parser::parse(int argc, char *argv[], unsigned start_index) {
         ->data_count(0, _sense_mode ? -1 : 1));
     auto arg_data_unknown = arg_desc_unknown.attr()->create_data(reserve_size);
     std::string arg_name;
-    std::shared_ptr<__ArgDataI> arg_data;
     Result result;
     bool after_eof = false;
     i = start_index;
@@ -2443,8 +2445,17 @@ Result Parser::parse(int argc, char *argv[], unsigned start_index) {
             continue;
         }
         ArgDesc *desc = nullptr;
+        std::shared_ptr<__ArgDataI> arg_data;
+        if (pos_arg_idx < pos_arg_vec.size() && pos_arg_vec[pos_arg_idx]) {
+            desc = pos_arg_vec[pos_arg_idx];
+            arg_name = desc->name();
+            arg_data = result_impl[arg_name];
+        }
+
         char *binded_data[1] = {nullptr};
-        if (p[0] == '-' && !__is_digital(p + 1)) {
+        if (arg_data && arg_data->eat_anything()) {
+            // do nothing
+        } else if (p[0] == '-' && !__is_digital(p + 1)) {
             if (p[1] == '-') {
                 if (p[2]) {
                     arg_name = p;
@@ -2516,11 +2527,7 @@ Result Parser::parse(int argc, char *argv[], unsigned start_index) {
                 result.set_tail(argc - i, argv + i);
                 break;
             }
-            if (pos_arg_idx < pos_arg_vec.size() && pos_arg_vec[pos_arg_idx]) {
-                desc = pos_arg_vec[pos_arg_idx];
-                arg_name = desc->name();
-                arg_data = result_impl[arg_name];
-            } else {
+            if (!desc) {
                 std::stringstream ss;
                 ss << "usage: arg['" << arg_name << "']";
                 if (arg_data) {
