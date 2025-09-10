@@ -1171,6 +1171,9 @@ protected:
     void set_hide() {
         _is_hidden = true;
     }
+    void set_sensitive_mode() {
+        _sense_mode = __SM_NAME;
+    }
     void set_stop_at_eof() {
         _sense_mode = __SM_EOF;
     }
@@ -1368,6 +1371,11 @@ struct __get_cli_atom_type : public ____get_cli_atom_type<T, __is_cli_scalar<T>:
         __ArgAttrT<T>::set_hide();                                                      \
         return std::static_pointer_cast<ArgAttr<T>>(__ArgAttrT<T>::shared_from_this()); \
     }
+#define __ArgAttr_sensitive_mode()                                                      \
+    std::shared_ptr<ArgAttr<T>> sensitive_mode() {                                      \
+        __ArgAttrT<T>::set_sensitive_mode();                                            \
+        return std::static_pointer_cast<ArgAttr<T>>(__ArgAttrT<T>::shared_from_this()); \
+    }
 #define __ArgAttr_stop_at_eof()                                                         \
     std::shared_ptr<ArgAttr<T>> stop_at_eof() {                                         \
         __ArgAttrT<T>::set_stop_at_eof();                                               \
@@ -1443,6 +1451,7 @@ public:
     __ArgAttr_default_value()
     __ArgAttr_examine()
     __ArgAttr_context()
+    __ArgAttr_sensitive_mode()
     __ArgAttr_stop_at_eof()
     std::shared_ptr<ArgAttr<T>> choices(std::unordered_set<std::string> values) {
         _choices = std::move(values);
@@ -1484,6 +1493,7 @@ public:
     __ArgAttr_default_value()
     __ArgAttr_examine()
     __ArgAttr_context()
+    __ArgAttr_sensitive_mode()
     __ArgAttr_stop_at_eof()
 };
 template <typename T>
@@ -1496,6 +1506,7 @@ public:
     __ArgAttr_default_value()
     __ArgAttr_examine()
     __ArgAttr_context()
+    __ArgAttr_sensitive_mode()
     __ArgAttr_stop_at_eof()
 };
 
@@ -2339,7 +2350,7 @@ int __ArgDataT<T>::appear(char *argv[], int argc, std::list<std::string> &err_li
     auto dim_1_at_most = _arg_attr.dim_1_at_most();
     int i = 0;
     std::list<std::string> err_tmp;
-    auto err_header = "[" + to_string(_appear_count) + "th appearance]: ";
+    auto err_header = " " + to_string(_appear_count) + "th: ";
     if (dim_0_at_most && _appear_count > dim_0_at_most) {
         std::stringstream ss;
         ss << "too many appearances";
@@ -2531,7 +2542,7 @@ Result Parser::parse(int argc, char *argv[], unsigned start_index) {
                 std::stringstream ss;
                 ss << "usage: arg['" << arg_name << "']";
                 if (arg_data) {
-                    ss << "[" << arg_data->appear_count() << "th appearance]";
+                    ss << " " << arg_data->appear_count() << "th";
                 }
                 ss << ": too many value '" << p << "'";
                 _err_list.emplace_back(ss.str());

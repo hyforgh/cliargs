@@ -282,9 +282,9 @@ The attribute interface includes "[common attribute interface](#common attribute
 |meta type|attributes|
 |---------|----------|
 |numerical|choices, ranges, range
-|string   |choices, stop_at_eof, regex
-|tuple    |stop_at_eof
-|struct   |stop_at_eof
+|string   |choices, regex, sensitive_mode, stop_at_eof
+|tuple    |sensitive_mode, stop_at_eof
+|struct   |sensitive_mode, stop_at_eof
 
 #### 3.3 Container type-specific attribute interface
 | |attribute|

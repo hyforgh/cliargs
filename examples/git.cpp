@@ -4,15 +4,15 @@ int main(int argc, char *argv[]) {
     //  Create a 'cliargs::Parser' instance
     cliargs::Parser parser("git");
     // Define arguments
-    parser.set_width(120).sensitive_mode().add_args()
+    parser.set_width(120).add_args()
         ('h', "help", "Print this message and exit") // a bool argument
         ("cmd", "commands", cliargs::value<std::string>()
             ->positional()
+            ->sensitive_mode()
             ->choices({"add", "log", "commit"})
             )
         ("arg", "arguments", cliargs::value<std::vector<char *>>()
             ->positional()
-            ->stop_at_eof()
             )
         ;
     // Parse

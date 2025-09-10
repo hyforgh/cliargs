@@ -280,9 +280,9 @@ auto &tail = result.tail();
 |meta type|attributes|
 |---------|----------|
 |numerical|choices, ranges, range
-|string   |choices, stop_at_eof, regex
-|tuple    |stop_at_eof
-|struct   |stop_at_eof
+|string   |choices, regex, sensitive_mode, stop_at_eof
+|tuple    |sensitive_mode, stop_at_eof
+|struct   |sensitive_mode, stop_at_eof
 
 #### 3.3 容器类型特有属性接口
 |      |attribute|
