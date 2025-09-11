@@ -78,7 +78,7 @@ TEST_CASE("map_vector") {
         CLI_TEST_DEFINE_NORM_ARG((MapVector), (->choices({5.12, 1.1, 5.0})), "--arg_name", "key1", "2");
         CHECK(parser.error());
         CHECK(cli_error_like(parser.error_details(),
-            ".*invalid value '2', should meet constraint: in set:\\{(5\\.12|, |1\\.1|, |5.*){5}\\}"));
+            ".*invalid value '2', should meet constraint: in-set\\{(5\\.12|, |1\\.1|, |5.*){5}\\}"));
     }
 
     SECTION("ranges-success") {
@@ -92,7 +92,7 @@ TEST_CASE("map_vector") {
         CLI_TEST_DEFINE_NORM_ARG((MapVector), (->ranges({{10.5, 20.8}, {40.5, 60.5}})), "--arg_name", "key1", "30.1");
         CHECK(parser.error());
         CHECK(cli_error_like(parser.error_details(),
-            ".*invalid value '30.1', should meet constraint: within ranges:\\[\\(10\\.5, 20\\.8\\), \\(40\\.5, 60\\.5\\)\\]"));
+            ".*invalid value '30.1', should meet constraint: within-ranges\\[\\(10\\.5, 20\\.8\\), \\(40\\.5, 60\\.5\\)\\]"));
     }
 
     SECTION("examine-success") {
@@ -144,7 +144,7 @@ TEST_CASE("map_vector") {
         CHECK(parser.error());
         CHECK(cli_error_like(parser.error_details(),
             ".*invalid value '4.0', should meet constraint: "
-            "\\(in set:\\{(5\\.12|, |1\\.1|, |5.*){5}\\} or within ranges:\\[\\(10\\.5, 20\\.8\\), \\(40\\.5, 60\\.5\\)\\]\\) and 'integer'"));
+            "\\(in-set\\{(5\\.12|, |1\\.1|, |5.*){5}\\} or within-ranges\\[\\(10\\.5, 20\\.8\\), \\(40\\.5, 60\\.5\\)\\]\\) and 'integer'"));
     }
 
     SECTION("constraint-failed-examine") {
@@ -156,6 +156,6 @@ TEST_CASE("map_vector") {
         CHECK(parser.error());
         CHECK(cli_error_like(parser.error_details(),
             ".*invalid value '40.8', should meet constraint: "
-            "\\(in set:\\{(5\\.12|, |1\\.1|, |5.*){5}\\} or within ranges:\\[\\(10\\.5, 20\\.8\\), \\(40\\.5, 60\\.5\\)\\]\\) and 'integer'"));
+            "\\(in-set\\{(5\\.12|, |1\\.1|, |5.*){5}\\} or within-ranges\\[\\(10\\.5, 20\\.8\\), \\(40\\.5, 60\\.5\\)\\]\\) and 'integer'"));
     }
 }

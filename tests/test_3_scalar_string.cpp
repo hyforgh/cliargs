@@ -41,7 +41,7 @@ TEST_CASE("scalar_string") {
         CLI_TEST_DEFINE_NORM_ARG((std::string), (->choices({"hello", "world"})), "--arg_name", "cliargs");
         CHECK(parser.error());
         CHECK(cli_error_like(parser.error_details(),
-            ".*invalid value 'cliargs', should meet constraint: in set:\\{(\"hello\"|, |\"world\"){3}\\}"));
+            ".*invalid value 'cliargs', should meet constraint: in-set\\{(\"hello\"|, |\"world\"){3}\\}"));
     }
 
     SECTION("regex-success") {
@@ -103,7 +103,7 @@ TEST_CASE("scalar_string") {
         CHECK(parser.error());
         CHECK(cli_error_like(parser.error_details(),
             ".*invalid value '5j', should meet constraint: "
-            "\\(in set:\\{(\"hello\"|, |\"world\"){3}\\} or integer\\) and 'shorter than 4'"));
+            "\\(in-set\\{(\"hello\"|, |\"world\"){3}\\} or integer\\) and 'shorter than 4'"));
     }
 
     SECTION("constraint-failed-examine") {
@@ -115,6 +115,6 @@ TEST_CASE("scalar_string") {
         CHECK(parser.error());
         CHECK(cli_error_like(parser.error_details(),
             ".*invalid value '5120', should meet constraint: "
-            "\\(in set:\\{(\"hello\"|, |\"world\"){3}\\} or integer\\) and 'shorter than 4'"));
+            "\\(in-set\\{(\"hello\"|, |\"world\"){3}\\} or integer\\) and 'shorter than 4'"));
     }
 }

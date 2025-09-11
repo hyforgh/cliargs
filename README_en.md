@@ -270,13 +270,14 @@ The attribute interface includes "[common attribute interface](#common attribute
 > For detailed examples of combined usage, please refer to the unit test
 
 #### 3.1 General attribute interface
-|attribue     |
-|-------------|
-|required     |
-|positional   |
-|default_value|
-|examine      |
-|hide         |
+|attribute    |description|
+|-------------|-----------|
+|required     |Parameters must be set
+|positional   |Position parameter, parameter name may not be provided when setting
+|default_value|Set default values for parameters
+|examine      |Set hook functions for checking or converting parameter values
+|hide         |Do not display this parameter information in the help message
+|concise_help |Do not display automatically generated content in the help information
 
 #### 3.2 Metadata type-specific attribute interface
 |meta type|attributes|

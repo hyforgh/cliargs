@@ -45,7 +45,7 @@ TEST_CASE("scalar_numeric") {
         CLI_TEST_DEFINE_NORM_ARG((std::map<std::string, int>), (->choices({1, 3, 5})), "--arg_name", "key1", "2");
         CHECK(parser.error());
         CHECK(cli_error_like(parser.error_details(),
-            ".*invalid value '2', should meet constraint: in set:\\{(1|, |3|, |5){5}\\}"));
+            ".*invalid value '2', should meet constraint: in-set\\{(1|, |3|, |5){5}\\}"));
     }
 
     SECTION("ranges-success") {
@@ -58,7 +58,7 @@ TEST_CASE("scalar_numeric") {
         CLI_TEST_DEFINE_NORM_ARG((std::map<std::string, int>), (->ranges({{10, 20}, {40, 60}})), "--arg_name", "key1", "30");
         CHECK(parser.error());
         CHECK(cli_error_like(parser.error_details(),
-            ".*invalid value '30', should meet constraint: within ranges:\\[\\(10, 20\\), \\(40, 60\\)\\]"));
+            ".*invalid value '30', should meet constraint: within-ranges\\[\\(10, 20\\), \\(40, 60\\)\\]"));
     }
 
     SECTION("examine-success") {
@@ -107,7 +107,7 @@ TEST_CASE("scalar_numeric") {
         CHECK(parser.error());
         CHECK(cli_error_like(parser.error_details(),
             ".*invalid value '30', should meet constraint: "
-            "\\(in set:\\{(1|, |3|, |5){5}\\} or within ranges:\\[\\(10, 20\\), \\(40, 60\\)\\]\\) and 'odd number'"));
+            "\\(in-set\\{(1|, |3|, |5){5}\\} or within-ranges\\[\\(10, 20\\), \\(40, 60\\)\\]\\) and 'odd number'"));
     }
 
     SECTION("constraint-failed-examine") {
@@ -119,6 +119,6 @@ TEST_CASE("scalar_numeric") {
         CHECK(parser.error());
         CHECK(cli_error_like(parser.error_details(),
             ".*invalid value '50', should meet constraint: "
-            "\\(in set:\\{(1|, |3|, |5){5}\\} or within ranges:\\[\\(10, 20\\), \\(40, 60\\)\\]\\) and 'odd number'"));
+            "\\(in-set\\{(1|, |3|, |5){5}\\} or within-ranges\\[\\(10, 20\\), \\(40, 60\\)\\]\\) and 'odd number'"));
     }
 }

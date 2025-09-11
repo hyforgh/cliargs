@@ -550,6 +550,7 @@ private:
     virtual std::string get_constraint_desc() const = 0;
     virtual std::string get_data_desc() const = 0;
     virtual bool is_hidden() const = 0;
+    virtual bool is_concise_help() const = 0;
     virtual __SenseMode sense_mode() const = 0;
 }; // __ArgAttrI
 
@@ -997,6 +998,7 @@ public:
             , _dim_1_at_most(__get_max_capacity<Tg, Ta>::value)
             , _context(nullptr)
             , _is_hidden(false)
+            , _concise_help(false)
             , _sense_mode(__SM_NO)
     {
         static_assert(std::is_same<Ta, typename __get_cli_value_type<Ta>::type>::value
@@ -1030,7 +1032,7 @@ protected:
         // (choices || ranges) && examine
         std::string desc;
         if (_match_choices) {
-            desc += "in set:" + _match_choices_desc;
+            desc += "in-set" + _match_choices_desc;
         }
         if (_match_ranges) {
             if (!desc.empty()) {
@@ -1090,6 +1092,9 @@ protected:
     }
     bool is_hidden() const override {
         return _is_hidden;
+    }
+    bool is_concise_help() const override {
+        return _concise_help;
     }
     __SenseMode sense_mode() const override {
         return _sense_mode;
@@ -1171,6 +1176,9 @@ protected:
     void set_hide() {
         _is_hidden = true;
     }
+    void set_concise_help() {
+        _concise_help = true;
+    }
     void set_sensitive_mode() {
         _sense_mode = __SM_NAME;
     }
@@ -1187,6 +1195,7 @@ protected:
     unsigned _dim_1_at_most;
     void *_context;
     bool _is_hidden;
+    bool _concise_help;
     T _default_value;
     __SenseMode _sense_mode;
     T_implicit_value _implicit_value;
@@ -1371,6 +1380,11 @@ struct __get_cli_atom_type : public ____get_cli_atom_type<T, __is_cli_scalar<T>:
         __ArgAttrT<T>::set_hide();                                                      \
         return std::static_pointer_cast<ArgAttr<T>>(__ArgAttrT<T>::shared_from_this()); \
     }
+#define __ArgAttr_concise_help()                                                        \
+    std::shared_ptr<ArgAttr<T>> concise_help() {                                        \
+        __ArgAttrT<T>::set_concise_help();                                              \
+        return std::static_pointer_cast<ArgAttr<T>>(__ArgAttrT<T>::shared_from_this()); \
+    }
 #define __ArgAttr_sensitive_mode()                                                      \
     std::shared_ptr<ArgAttr<T>> sensitive_mode() {                                      \
         __ArgAttrT<T>::set_sensitive_mode();                                            \
@@ -1408,7 +1422,7 @@ public:
     std::shared_ptr<ArgAttr<T>> ranges(std::vector<std::pair<Ta, Ta>> range_pairs, std::string desc = "") {
         _value_ranges.insert(_value_ranges.end(), range_pairs.begin(), range_pairs.end());
         if (desc.empty()) {
-            desc = "within ranges:" + to_string(_value_ranges);
+            desc = "within-ranges" + to_string(_value_ranges);
         }
         __ArgAttrT<T>::set_match_ranges(
             std::bind(&__ArgAttrAT<T, __AT_VALUE>::is_in_ranges, this, std::placeholders::_1)
@@ -1464,7 +1478,7 @@ public:
         _regex_string = std::move(regex_string);
         _regex_object = std::regex(_regex_string);
         if (desc.empty()) {
-            desc = "match regex:" + to_string(_regex_string);
+            desc = "match-regex(\"" + _regex_string + "\")";
         }
         __ArgAttrT<T>::set_match_ranges(
             std::bind(&__ArgAttrAT<T, __AT_STRING>::is_match_regex, this, std::placeholders::_1)
@@ -1606,6 +1620,7 @@ class ArgAttr : public __ArgAttrLT<T
         , typename __get_cli_value_type<typename __get_cli_value_type<T>::type>::type> {
 public:
     __ArgAttr_hide()
+    __ArgAttr_concise_help()
 }; // ArgAttr
 
 #undef __ArgAttr_required
@@ -1616,6 +1631,9 @@ public:
 #undef __ArgAttr_line_width
 #undef __ArgAttr_context
 #undef __ArgAttr_hide
+#undef __ArgAttr_concise_help
+#undef __ArgAttr_sensitive_mode
+#undef __ArgAttr_stop_at_eof
 
 template <typename T>
 std::shared_ptr<ArgAttr<T>> value() {
@@ -1903,9 +1921,11 @@ void Parser::print_help(const std::string &indent, std::ostream &os) const {
         if (it.attr()->is_positional()) {
             if (is_first_positional) {
                 is_first_positional = false;
-                os << "[POSITIONAL ARGUMENTS:";
+                os << "[";
+            } else {
+                os << " ";
             }
-            os << " " << it.name().substr(2);
+            os << "<" << it.name().substr(2) << ">";
         }
     }
     if (!is_first_positional) {
@@ -1920,7 +1940,7 @@ void Parser::print_help(const std::string &indent, std::ostream &os) const {
     int help_width = _help_width - name_width - flag_width \
         - indent_inner.length() - indent.length();
     auto is_space = [&](char c) { return c == ' ' || c == '\t'; };
-    auto print_desc = [&](const std::string &desc) {
+    auto print_desc = [&](const std::string &desc, bool concise_help) {
         size_t b = 0;
         while (b < desc.length()) {
             size_t e = desc.find('\n', b);
@@ -1939,7 +1959,7 @@ void Parser::print_help(const std::string &indent, std::ostream &os) const {
             if (b) {
                 os << "\n" << indent << indent_inner
                     << std::setw(name_width) << "";
-                if (!_concise_help) {
+                if (!concise_help) {
                     os << std::setw(flag_width) << "";
                 }
             }
@@ -1952,6 +1972,7 @@ void Parser::print_help(const std::string &indent, std::ostream &os) const {
         if (attr->is_hidden()) {
             continue;
         }
+        auto is_concise_help = attr->is_concise_help() || _concise_help;
         auto &flag = it.flag();
         auto &name = it.name();
         os << indent << indent_inner
@@ -1962,25 +1983,25 @@ void Parser::print_help(const std::string &indent, std::ostream &os) const {
             os << name_delimiter;
         }
         os << std::left << std::setw(lname_width) << name;
-        print_desc(it.desc());
+        print_desc(it.desc(), is_concise_help);
         if (attr->is_positional()) {
             os << " (positional)";
         }
         os << "\n";
-        if (!_concise_help) {
+        if (!is_concise_help) {
             auto data_desc = attr->get_data_desc();
             if (!data_desc.empty()) {
                 os << indent  << indent_inner
                     << std::setw(name_width) << ""
                         << std::setw(flag_width) << std::right << "value: ";
-                print_desc(data_desc);
+                print_desc(data_desc, is_concise_help);
                 os << "\n";
             }
             if (attr->has_constraint()) {
                 os << indent << indent_inner
                     << std::setw(name_width) << ""
                     << std::setw(flag_width) << std::right << "constraint: ";
-                print_desc(attr->get_constraint_desc());
+                print_desc(attr->get_constraint_desc(), is_concise_help);
                 os << "\n";
             }
         }
@@ -1996,7 +2017,7 @@ void Parser::print_help(const std::string &indent, std::ostream &os) const {
                 ss << flag << name_delimiter;
             }
             ss << name << "'";
-            print_desc(ss.str());
+            print_desc(ss.str(), is_concise_help);
             os << "\n";
         }
     }

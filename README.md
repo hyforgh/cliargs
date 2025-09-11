@@ -268,13 +268,14 @@ auto &tail = result.tail();
 > 详细组合用法示例请参阅单元测试
 
 #### 3.1 通用属性接口
-|attribue     |
-|-------------|
-|required     |
-|positional   |
-|default_value|
-|examine      |
-|hide         |
+|attribute    |description|
+|-------------|-----------|
+|required     |参数必须被设置
+|positional   |位置参数，设置时可不提供参数名称
+|default_value|设置参数的默认值
+|examine      |设置检查或转换参数值的钩子函数
+|hide         |不在帮助信息中显示此参数信息
+|concise_help |帮助信息中不显示自动生成的内容
 
 #### 3.2 元数据类型特有属性接口
 |meta type|attributes|
