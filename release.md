@@ -1,3 +1,11 @@
+## 1.5.0
+* new feature
+    1. cliargs::value<>()->sensitive_mode()
+    2. cliargs::value<>()->concise_help()
+
+* fix bug
+    1. fix bugs of positional arguments with string type
+
 ## 1.4.0
 * new feature
     1. support nesting (`cliargs::Result::tail()` and `stop_at_eof()`)
