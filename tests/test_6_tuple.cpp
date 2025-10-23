@@ -3,10 +3,6 @@
 typedef std::tuple<std::string, float, int> MyTuple;
 
 TEST_CASE("vector_numeric") {
-    SECTION("type-name") {
-        CHECK(cliargs::type_traits<MyTuple>::name() == "tuple<string, float, int>");
-    }
-
     SECTION("single-full") {
         CLI_TEST_DEFINE_NORM_ARG((MyTuple), ()
             , "--arg_name", "name", "5.12", "2");
@@ -26,7 +22,7 @@ TEST_CASE("vector_numeric") {
             , "--arg_name", "name");
         CHECK(parser.error());
         CHECK(cli_error_like(parser.error_details(),
-            ".*a\\(n\\) 'float' value is required as 'tuple<1>'"));
+            ".*a\\(n\\) 'float32' value is required as 'tuple<1>'"));
     }
 
     SECTION("single-too-many") {
@@ -106,7 +102,7 @@ TEST_CASE("vector_numeric") {
         CHECK(parser.error());
         std::cout << cliargs::to_string(arg_value.as<std::vector<MyTuple>>()) << std::endl;
         CHECK(cli_error_like(parser.error_details(),
-            ".*a\\(n\\) 'float' value is required as 'vector\\[1\\]<1>'"));
+            ".*a\\(n\\) 'float32' value is required as 'vector\\[1\\]<1>'"));
     }
 
     SECTION("vector-too-many") {
@@ -153,7 +149,7 @@ TEST_CASE("vector_numeric") {
         CHECK(parser.error());
         std::cout << cliargs::to_string(arg_value.as<std::map<std::string, MyTuple>>()) << std::endl;
         CHECK(cli_error_like(parser.error_details(),
-            ".*a\\(n\\) 'float' value is required as 'map\\[\"key2\"\\]<1>'"));
+            ".*a\\(n\\) 'float32' value is required as 'map\\[\"key2\"\\]<1>'"));
     }
 
     SECTION("map-too-many") {

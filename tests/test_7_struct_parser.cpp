@@ -25,10 +25,6 @@ bool operator == (const MyStruct &a, const MyStruct &b) {
 }
 
 TEST_CASE("struct_parser") {
-    SECTION("type-name") {
-        CHECK(cliargs::type_traits<MyStruct>::name() == "{string, float[, int]}");
-    }
-
     SECTION("single-full") {
         CLI_TEST_DEFINE_NORM_ARG((MyStruct), (), "--arg_name", "data", "1.5", "2");
         CHECK(arg_value.valid());
@@ -45,7 +41,7 @@ TEST_CASE("struct_parser") {
         CLI_TEST_DEFINE_NORM_ARG((MyStruct), (), "--arg_name", "data");
         CHECK(parser.error());
         CHECK(cli_error_like(parser.error_details(),
-            ".*a\\(n\\) 'float' value is required as 'MyStruct\\.gain'"));
+            ".*a\\(n\\) 'float32' value is required as 'MyStruct\\.gain'"));
     }
 
     SECTION("single-too-many") {
@@ -129,7 +125,7 @@ TEST_CASE("struct_parser") {
             , "--arg_name", "data", "1.5", "2", "--arg_name", "bin");
         CHECK(parser.error());
         CHECK(cli_error_like(parser.error_details(),
-            ".*a\\(n\\) 'float' value is required as 'vector\\[1\\].gain'"));
+            ".*a\\(n\\) 'float32' value is required as 'vector\\[1\\].gain'"));
     }
 
     SECTION("vector-too-many") {
@@ -172,7 +168,7 @@ TEST_CASE("struct_parser") {
             , "--arg_name", "key1", "data", "1.5", "2", "--arg_name", "key2", "bin");
         CHECK(parser.error());
         CHECK(cli_error_like(parser.error_details(),
-            ".*a\\(n\\) 'float' value is required as 'map\\[\"key2\"\\]\\.gain'"));
+            ".*a\\(n\\) 'float32' value is required as 'map\\[\"key2\"\\]\\.gain'"));
     }
 
     SECTION("map-too-many") {

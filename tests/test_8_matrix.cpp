@@ -47,7 +47,7 @@ TEST_CASE("vector_numeric") {
             , "--arg_name", "5.12", "--arg_name", "1.1");
         CHECK(parser.error());
         CHECK(cli_error_like(parser.error_details(),
-            ".*a\\(n\\) 'float' value is required as 'vector\\[1\\]'"));
+            ".*a\\(n\\) 'float32' value is required as 'vector\\[1\\]'"));
     }
 
     SECTION("line_width-limit-too-many") {

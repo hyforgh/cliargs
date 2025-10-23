@@ -118,108 +118,36 @@ template <typename T>
 struct type_traits {
     static const std::string &name();
 };
-template <> struct type_traits<char *> {
-    static const std::string &name() {
-        static std::string s_name = "char *";
-        return s_name;
-    }
+
+#define DEFINE_TYPE_TRAITS_COMMON(_type, _name, ...)                            \
+template <> struct type_traits<_type> {                                         \
+    static const std::string &name() {                                          \
+        static std::string s_name = _name __VA_ARGS__;                          \
+        return s_name;                                                          \
+    }                                                                           \
 };
-template <> struct type_traits<const char *> {
-    static const std::string &name() {
-        static std::string s_name = "const char *";
-        return s_name;
-    }
-};
-template <> struct type_traits<std::string> {
-    static const std::string &name() {
-        static std::string s_name = "string";
-        return s_name;
-    }
-};
-template <> struct type_traits<bool> {
-    static const std::string &name() {
-        static std::string s_name = "bool";
-        return s_name;
-    }
-};
-template <> struct type_traits<float> {
-    static const std::string &name() {
-        static std::string s_name = "float";
-        return s_name;
-    }
-};
-template <> struct type_traits<double> {
-    static const std::string &name() {
-        static std::string s_name = "double";
-        return s_name;
-    }
-};
-template <> struct type_traits<long long> {
-    static const std::string &name() {
-        static std::string s_name = "long long";
-        return s_name;
-    }
-};
-template <> struct type_traits<unsigned long long> {
-    static const std::string &name() {
-        static std::string s_name = "unsigned long long";
-        return s_name;
-    }
-};
-template <> struct type_traits<long> {
-    static const std::string &name() {
-        static std::string s_name = "long";
-        return s_name;
-    }
-};
-template <> struct type_traits<unsigned long> {
-    static const std::string &name() {
-        static std::string s_name = "unsigned long";
-        return s_name;
-    }
-};
-template <> struct type_traits<int> {
-    static const std::string &name() {
-        static std::string s_name = "int";
-        return s_name;
-    }
-};
-template <> struct type_traits<unsigned int> {
-    static const std::string &name() {
-        static std::string s_name = "unsigned int";
-        return s_name;
-    }
-};
-template <> struct type_traits<short> {
-    static const std::string &name() {
-        static std::string s_name = "short";
-        return s_name;
-    }
-};
-template <> struct type_traits<unsigned short> {
-    static const std::string &name() {
-        static std::string s_name = "unsigned short";
-        return s_name;
-    }
-};
-template <> struct type_traits<signed char> {
-    static const std::string &name() {
-        static std::string s_name = "signed char";
-        return s_name;
-    }
-};
-template <> struct type_traits<unsigned char> {
-    static const std::string &name() {
-        static std::string s_name = "unsigned char";
-        return s_name;
-    }
-};
-template <> struct type_traits<char> {
-    static const std::string &name() {
-        static std::string s_name = "char";
-        return s_name;
-    }
-};
+#define DEFINE_TYPE_TRAITS_NUMERIC(_type, _name)                                \
+    DEFINE_TYPE_TRAITS_COMMON(_type, _name, + std::to_string(sizeof(_type) * 8))
+DEFINE_TYPE_TRAITS_COMMON(char *, "string")
+DEFINE_TYPE_TRAITS_COMMON(const char *, "string")
+DEFINE_TYPE_TRAITS_COMMON(std::string, "string")
+DEFINE_TYPE_TRAITS_COMMON(bool, "bool")
+DEFINE_TYPE_TRAITS_COMMON(char, "char")
+DEFINE_TYPE_TRAITS_NUMERIC(float, "float")
+DEFINE_TYPE_TRAITS_NUMERIC(double, "float")
+DEFINE_TYPE_TRAITS_NUMERIC(long long, "int")
+DEFINE_TYPE_TRAITS_NUMERIC(unsigned long long, "uint")
+DEFINE_TYPE_TRAITS_NUMERIC(long, "int")
+DEFINE_TYPE_TRAITS_NUMERIC(unsigned long, "uint")
+DEFINE_TYPE_TRAITS_NUMERIC(int, "int")
+DEFINE_TYPE_TRAITS_NUMERIC(unsigned int, "uint")
+DEFINE_TYPE_TRAITS_NUMERIC(short, "int")
+DEFINE_TYPE_TRAITS_NUMERIC(unsigned short, "uint")
+DEFINE_TYPE_TRAITS_NUMERIC(signed char, "int")
+DEFINE_TYPE_TRAITS_NUMERIC(unsigned char, "uint")
+#undef DEFINE_TYPE_TRAITS_NUMERIC
+#undef DEFINE_TYPE_TRAITS_COMMON
+
 template <typename T, std::size_t N>
 struct type_traits<std::array<T, N>> {
     static const std::string &name();
