@@ -14,7 +14,7 @@ TEST_CASE("bool") {
     auto &help = result["help"];                          \
     auto &normal_bool = result["normal_bool"];            \
     auto &reverse_bool = result["reverse_bool"];          \
-    REQUIRE(!parser.error());                             \
+    REQUIRE(!result.error());                             \
     CHECK(help.valid());                                  \
     CHECK(help.as<bool>());                               \
     CHECK(normal_bool.valid());                           \

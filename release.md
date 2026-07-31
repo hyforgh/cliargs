@@ -1,42 +1,69 @@
-## 1.5.0
-* new feature
-    1. cliargs::value<>()->sensitive_mode()
-    2. cliargs::value<>()->concise_help()
+# Release Notes
 
-* fix bug
-    1. fix bugs of positional arguments with string type
+## 2.0.0
+**TL;DR: Major API refactor & behavior change.** The `error()` and `print_help()` methods have been moved from `Parser` to `Result`. The default parsing mode has switched from GNU mode to Smart mode (`sensitive_mode`).
+
+**Breaking Changes**
+* **API Migration**: The `error()` and `print_help()` methods have been moved from the `Parser` class to the `Result` class. You should now call `Result::error()` and `Result::print_help()`.
+* **Parser Interface Updates**: 
+  * `Parser::error()` now requires a `const Result*` parameter.
+  * `Parser::print_help()` now requires a `const Result*` parameter and supports additional arguments.
+* **Default Mode Change**: The default parsing mode has been changed from GNU mode to Smart mode (`sensitive_mode`).
+* **Mode Renaming**: The `Parser::sensitive_mode()` method has been replaced by `Parser::gnu_mode()`.
+* **Custom Parsing API**: The internal parsing functions have been renamed to avoid reserved identifiers. Please update your code to use `cliargs_parse_by_format` and `cliargs_parse_by_parser` instead of `__parse_by_format` and `__parse_by_parser`.
+* **Removed Attribute**: The `ArgAttr::sensitive_mode()` attribute has been removed.
+
+## 1.5.0
+**TL;DR: Granular help & mode control.** Adds per-argument control for sensitive mode and concise help output.
+
+**New Features**
+* Added `cliargs::value<>()->sensitive_mode()` to enable sensitive mode for specific arguments.
+* Added `cliargs::value<>()->concise_help()` to suppress auto-generated content in help messages.
+
+**Bug Fixes**
+* Fixed an issue with positional arguments of the string type.
 
 ## 1.4.0
-* new feature
-    1. support nesting (`cliargs::Result::tail()` and `stop_at_eof()`)
+**TL;DR: Argument nesting support.** Introduces `tail()` and `stop_at_eof()` for handling nested command-line structures.
 
-* fix bug
-    1. fix bugs casued by `--`
+**New Features**
+* Added support for argument nesting via `cliargs::Result::tail()` and the `stop_at_eof()` attribute.
+
+**Bug Fixes**
+* Fixed parsing bugs caused by the `--` terminator.
 
 ## 1.3.0
-* new feature
-    1. argument name alias
+**TL;DR: Aliases & negative number fixes.** Adds support for argument name aliases and resolves parsing issues with negative values.
 
-* fix bug
-    1. fix positional arguments with negative value
+**New Features**
+* Added support for argument name aliases.
+
+**Bug Fixes**
+* Fixed an issue where positional arguments with negative values were incorrectly parsed.
 
 ## 1.2.0
-* new feature
-    1. sensitive mode
-    2. hide some arguments in help message
-    3. new attribute `range(T min_value, T max_value, ...)`
+**TL;DR: Sensitive mode & value ranges.** Introduces strict parsing (Sensitive Mode), hidden arguments, and numeric range constraints.
 
-* fix bug
-    1. binary number fails in same environment
+**New Features**
+* Introduced Sensitive Mode for stricter argument parsing.
+* Added the `hide` attribute to hide specific arguments from the help message.
+* Added the `range(T min_value, T max_value, ...)` attribute for numeric value constraints.
+
+**Bug Fixes**
+* Fixed a bug where binary numbers failed to parse in certain environments.
 
 ## 1.1.0
-* new feature
-    1. support binary number
-    2. examine bool type
+**TL;DR: Binary support & validation.** Adds binary number parsing, boolean validation, and improves value reference handling.
 
-* fix bug
-    1. default_value & implicit_value support lvalue;
-    2. help message
+**New Features**
+* Added support for parsing binary numbers.
+* Added the `examine` attribute for validating boolean types.
+
+**Bug Fixes**
+* `default_value` and `implicit_value` now properly support lvalue references.
+* Fixed formatting issues in the help message output.
 
 ## 1.0.0
-Initial
+**TL;DR: Initial release.** The foundational header-only C++ command-line argument parser.
+
+* Initial public release.

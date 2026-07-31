@@ -20,16 +20,16 @@ TEST_CASE("vector_numeric") {
     SECTION("single-too-few") {
         CLI_TEST_DEFINE_NORM_ARG((MyTuple), (->line_width(2))
             , "--arg_name", "name");
-        CHECK(parser.error());
-        CHECK(cli_error_like(parser.error_details(),
+        CHECK(result.error());
+        CHECK(cli_error_like(result.error_details(),
             ".*a\\(n\\) 'float32' value is required as 'tuple<1>'"));
     }
 
     SECTION("single-too-many") {
         CLI_TEST_DEFINE_NORM_ARG((MyTuple), (->line_width(2))
             , "--arg_name", "name", "5.12", "2", "9");
-        CHECK(parser.error());
-        CHECK(cli_error_like(parser.error_details(),
+        CHECK(result.error());
+        CHECK(cli_error_like(result.error_details(),
             ".*too many value '9'"));
     }
 
@@ -72,8 +72,8 @@ TEST_CASE("vector_numeric") {
         CLI_TEST_DEFINE_NORM_ARG((MyTuple), (
                 ->examine([](MyTuple &v) -> bool { return !std::get<0>(v).empty(); }, "<0> not empty"))
             , "--arg_name", "", "5.12", "2");
-        CHECK(parser.error());
-        CHECK(cli_error_like(parser.error_details(),
+        CHECK(result.error());
+        CHECK(cli_error_like(result.error_details(),
             ".*should meet constraint: '<0> not empty'"));
     }
 
@@ -99,17 +99,17 @@ TEST_CASE("vector_numeric") {
     SECTION("vector-too-few") {
         CLI_TEST_DEFINE_NORM_ARG((std::vector<MyTuple>), (->line_width(2))
             , "--arg_name", "data", "1.5", "2", "--arg_name", "bin");
-        CHECK(parser.error());
+        CHECK(result.error());
         std::cout << cliargs::to_string(arg_value.as<std::vector<MyTuple>>()) << std::endl;
-        CHECK(cli_error_like(parser.error_details(),
+        CHECK(cli_error_like(result.error_details(),
             ".*a\\(n\\) 'float32' value is required as 'vector\\[1\\]<1>'"));
     }
 
     SECTION("vector-too-many") {
         CLI_TEST_DEFINE_NORM_ARG((std::vector<MyTuple>), ()
             , "--arg_name", "data", "1.5", "2" "--arg_name", "bin", "2.5", "3", "9");
-        CHECK(parser.error());
-        CHECK(cli_error_like(parser.error_details(),
+        CHECK(result.error());
+        CHECK(cli_error_like(result.error_details(),
             ".*too many value '9'"));
     }
 
@@ -146,17 +146,17 @@ TEST_CASE("vector_numeric") {
         CLI_TEST_DEFINE_NORM_ARG((std::map<std::string, MyTuple>)
             , (->line_width(2)->implicit_value({"name", 2, -1}))
             , "--arg_name", "key1", "data", "1.5", "2", "--arg_name", "key2", "bin");
-        CHECK(parser.error());
+        CHECK(result.error());
         std::cout << cliargs::to_string(arg_value.as<std::map<std::string, MyTuple>>()) << std::endl;
-        CHECK(cli_error_like(parser.error_details(),
+        CHECK(cli_error_like(result.error_details(),
             ".*a\\(n\\) 'float32' value is required as 'map\\[\"key2\"\\]<1>'"));
     }
 
     SECTION("map-too-many") {
         CLI_TEST_DEFINE_NORM_ARG((std::map<std::string, MyTuple>), ()
             , "--arg_name", "key1", "data", "1.5", "2", "--arg_name", "key2", "bin", "2.5", "3", "9");
-        CHECK(parser.error());
-        CHECK(cli_error_like(parser.error_details(),
+        CHECK(result.error());
+        CHECK(cli_error_like(result.error_details(),
             ".*too many value '9'"));
     }
 

@@ -11,7 +11,7 @@ std::ostream &operator << (std::ostream &os, const MyStruct &obj) {
     return os;
 }
 
-const char *__parse_by_format(MyStruct &obj, char *psz
+const char *cliargs_parse_by_format(MyStruct &obj, char *psz
         , std::string name, std::list<std::string> &err_list
         , void *context, char *parent) {
     const char *type_name = "\"string,float[,long]\"";
@@ -39,21 +39,21 @@ const char *__parse_by_format(MyStruct &obj, char *psz
     if (it == sub_list.end()) {
         err_list.emplace_back(err_head + "'MyStruct::name'"); // 'MyStruct::name' is required
     } else {
-        cliargs::__parse_by_format(obj.name, (char *)it->c_str(), "MyStruct::name"
+        cliargs::cliargs_parse_by_format(obj.name, (char *)it->c_str(), "MyStruct::name"
             , err_list, context, parent);
         ++it;
     }
     if (it == sub_list.end()) {
         err_list.emplace_back(err_head + "'MyStruct::gain'"); // 'MyStruct::gain' is required
     } else {
-        cliargs::__parse_by_format(obj.gain, (char *)it->c_str(), "MyStruct::gain"
+        cliargs::cliargs_parse_by_format(obj.gain, (char *)it->c_str(), "MyStruct::gain"
             , err_list, context, parent);
         ++it;
     }
     if (it == sub_list.end()) {
         obj.size = 0; // "MyStruct::size" is optional, assign a default value if not specified by user
     } else {
-        cliargs::__parse_by_format(obj.size, (char *)it->c_str(), "MyStruct::size"
+        cliargs::cliargs_parse_by_format(obj.size, (char *)it->c_str(), "MyStruct::size"
             , err_list, context, parent);
     }
     if (sub_list.size() < 2) {
@@ -104,9 +104,9 @@ int main(int argc, char *argv[]) {
         ;
     // Parse
     auto result = parser.parse(argc, argv);
-    if (parser.error() || result["help"].as<bool>()) {
-        parser.print_help();
-        return parser.error() ? -1 : 0;
+    if (result.error() || result["help"].as<bool>()) {
+        result.print_help();
+        return result.error() ? -1 : 0;
     }
     // Use result
     std::cout << "my_struct: " << cliargs::to_string(result["my_struct"].as<MyStruct>()) << std::endl;

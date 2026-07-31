@@ -45,9 +45,9 @@ TEST_CASE("scalar_numeric") {
 
     SECTION("choices-faield") {
         CLI_TEST_DEFINE_NORM_ARG((int), (->choices({1, 3, 5})), "--arg_name", "2");
-        CHECK(parser.error());
-        CHECK(cli_error_like(parser.error_details(),
-            ".*invalid value '2', should meet constraint: in-set\\{(1|, |3|, |5){5}\\}"));
+        CHECK(result.error());
+        CHECK(cli_error_like(result.error_details(),
+            ".*invalid value '2', should meet constraint: in-set\\{1, 3, 5\\}"));
     }
 
     SECTION("ranges-success") {
@@ -58,8 +58,8 @@ TEST_CASE("scalar_numeric") {
 
     SECTION("ranges-faield") {
         CLI_TEST_DEFINE_NORM_ARG((int), (->ranges({{10, 20}, {40, 60}})), "--arg_name", "30");
-        CHECK(parser.error());
-        CHECK(cli_error_like(parser.error_details(),
+        CHECK(result.error());
+        CHECK(cli_error_like(result.error_details(),
             ".*invalid value '30', should meet constraint: within-ranges\\[\\(10, 20\\), \\(40, 60\\)\\]"));
     }
 
@@ -75,8 +75,8 @@ TEST_CASE("scalar_numeric") {
         CLI_TEST_DEFINE_NORM_ARG((int), (
                 ->examine([](int &v) -> bool { return v % 2; }, "odd number")),
             "--arg_name", "512");
-        CHECK(parser.error());
-        CHECK(cli_error_like(parser.error_details(),
+        CHECK(result.error());
+        CHECK(cli_error_like(result.error_details(),
             ".*invalid value '512', should meet constraint: 'odd number'"));
     }
 
@@ -106,8 +106,8 @@ TEST_CASE("scalar_numeric") {
                 ->ranges({{10, 20}, {40, 60}})
                 ->examine([](int &v) -> bool { return v % 2; }, "odd number")),
             "--arg_name", "30");
-        CHECK(parser.error());
-        CHECK(cli_error_like(parser.error_details(),
+        CHECK(result.error());
+        CHECK(cli_error_like(result.error_details(),
             ".*invalid value '30', should meet constraint: "
             "\\(in-set\\{(1|, |3|, |5){5}\\} or within-ranges\\[\\(10, 20\\), \\(40, 60\\)\\]\\) and 'odd number'"));
     }
@@ -118,8 +118,8 @@ TEST_CASE("scalar_numeric") {
                 ->ranges({{10, 20}, {40, 60}})
                 ->examine([](int &v) -> bool { return v % 2; }, "odd number")),
             "--arg_name", "50");
-        CHECK(parser.error());
-        CHECK(cli_error_like(parser.error_details(),
+        CHECK(result.error());
+        CHECK(cli_error_like(result.error_details(),
             ".*invalid value '50', should meet constraint: "
             "\\(in-set\\{(1|, |3|, |5){5}\\} or within-ranges\\[\\(10, 20\\), \\(40, 60\\)\\]\\) and 'odd number'"));
     }

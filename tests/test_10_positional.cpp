@@ -21,7 +21,7 @@ TEST_CASE("positional") {
         auto &i = result["int"];                              \
         auto &f = result["float"];                            \
         auto &v = result["vector"];                           \
-        REQUIRE(!parser.error());                             \
+        REQUIRE(!result.error());                             \
         CHECK(i.valid());                                     \
         CHECK(i.as<int>() == -1);                             \
         CHECK(f.valid());                                     \

@@ -39,8 +39,8 @@ TEST_CASE("scalar_string") {
 
     SECTION("choices-faield") {
         CLI_TEST_DEFINE_NORM_ARG((std::string), (->choices({"hello", "world"})), "--arg_name", "cliargs");
-        CHECK(parser.error());
-        CHECK(cli_error_like(parser.error_details(),
+        CHECK(result.error());
+        CHECK(cli_error_like(result.error_details(),
             ".*invalid value 'cliargs', should meet constraint: in-set\\{(\"hello\"|, |\"world\"){3}\\}"));
     }
 
@@ -52,8 +52,8 @@ TEST_CASE("scalar_string") {
 
     SECTION("regex-faield") {
         CLI_TEST_DEFINE_NORM_ARG((std::string), (->regex("\\d+", "integer")), "--arg_name", "cliargs");
-        CHECK(parser.error());
-        CHECK(cli_error_like(parser.error_details(),
+        CHECK(result.error());
+        CHECK(cli_error_like(result.error_details(),
             ".*invalid value 'cliargs', should meet constraint: integer"));
     }
 
@@ -69,8 +69,8 @@ TEST_CASE("scalar_string") {
         CLI_TEST_DEFINE_NORM_ARG((std::string), (
                 ->examine([](std::string &v) -> bool { return !v.empty(); }, "not empty")),
             "--arg_name", "");
-        CHECK(parser.error());
-        CHECK(cli_error_like(parser.error_details(),
+        CHECK(result.error());
+        CHECK(cli_error_like(result.error_details(),
             ".*invalid value '', should meet constraint: 'not empty'"));
     }
 
@@ -100,8 +100,8 @@ TEST_CASE("scalar_string") {
                 ->regex("\\d+", "integer")
                 ->examine([](std::string &v) -> bool { return v.length() < 4; }, "shorter than 4")),
             "--arg_name", "5j");
-        CHECK(parser.error());
-        CHECK(cli_error_like(parser.error_details(),
+        CHECK(result.error());
+        CHECK(cli_error_like(result.error_details(),
             ".*invalid value '5j', should meet constraint: "
             "\\(in-set\\{(\"hello\"|, |\"world\"){3}\\} or integer\\) and 'shorter than 4'"));
     }
@@ -112,8 +112,8 @@ TEST_CASE("scalar_string") {
                 ->regex("\\d+", "integer")
                 ->examine([](std::string &v) -> bool { return v.length() < 4; }, "shorter than 4")),
             "--arg_name", "5120");
-        CHECK(parser.error());
-        CHECK(cli_error_like(parser.error_details(),
+        CHECK(result.error());
+        CHECK(cli_error_like(result.error_details(),
             ".*invalid value '5120', should meet constraint: "
             "\\(in-set\\{(\"hello\"|, |\"world\"){3}\\} or integer\\) and 'shorter than 4'"));
     }

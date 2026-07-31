@@ -27,9 +27,9 @@ int main(int argc, char *argv[]) {
         ;
     // Parse
     auto result = parser.parse(argc, argv);
-    if (parser.error() || result["help"].as<bool>()) {
-        parser.print_help();
-        return parser.error() ? -1 : 0;
+    if (result.error() || result["help"].as<bool>()) {
+        result.print_help();
+        return result.error() ? -1 : 0;
     }
     // Use result
     std::cout << "  scalar: " << cliargs::to_string(result["scalar"].as<MyTuple>()) << std::endl;

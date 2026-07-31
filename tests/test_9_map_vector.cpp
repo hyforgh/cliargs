@@ -26,16 +26,16 @@ TEST_CASE("map_vector") {
 
     SECTION("line_width-limit-too-few") {
         CLI_TEST_DEFINE_NORM_ARG((MapVector), (->line_width(2, 3)), "--arg_name", "key1", "5.12");
-        CHECK(parser.error());
-        CHECK(cli_error_like(parser.error_details(),
+        CHECK(result.error());
+        CHECK(cli_error_like(result.error_details(),
             ".*a\\(n\\) 'float32' value is required as 'map\\[\"key1\"\\]\\[1\\]'"));
     }
 
     SECTION("line_width-limit-too-many") {
         CLI_TEST_DEFINE_NORM_ARG((MapVector), (->line_width(2, 3))
             , "--arg_name", "key1", "5.12", "1.1", "5.0", "9");
-        CHECK(parser.error());
-        CHECK(cli_error_like(parser.error_details(),
+        CHECK(result.error());
+        CHECK(cli_error_like(result.error_details(),
             ".*too many value '9'"));
     }
 
@@ -76,8 +76,8 @@ TEST_CASE("map_vector") {
 
     SECTION("choices-faield") {
         CLI_TEST_DEFINE_NORM_ARG((MapVector), (->choices({5.12, 1.1, 5.0})), "--arg_name", "key1", "2");
-        CHECK(parser.error());
-        CHECK(cli_error_like(parser.error_details(),
+        CHECK(result.error());
+        CHECK(cli_error_like(result.error_details(),
             ".*invalid value '2', should meet constraint: in-set\\{(5\\.12|, |1\\.1|, |5.*){5}\\}"));
     }
 
@@ -90,8 +90,8 @@ TEST_CASE("map_vector") {
 
     SECTION("ranges-faield") {
         CLI_TEST_DEFINE_NORM_ARG((MapVector), (->ranges({{10.5, 20.8}, {40.5, 60.5}})), "--arg_name", "key1", "30.1");
-        CHECK(parser.error());
-        CHECK(cli_error_like(parser.error_details(),
+        CHECK(result.error());
+        CHECK(cli_error_like(result.error_details(),
             ".*invalid value '30.1', should meet constraint: within-ranges\\[\\(10\\.5, 20\\.8\\), \\(40\\.5, 60\\.5\\)\\]"));
     }
 
@@ -108,8 +108,8 @@ TEST_CASE("map_vector") {
         CLI_TEST_DEFINE_NORM_ARG((MapVector), (
                 ->examine([](float &v) -> bool { return v > 0; }, "positive")),
             "--arg_name", "key1", "-50.1");
-        CHECK(parser.error());
-        CHECK(cli_error_like(parser.error_details(),
+        CHECK(result.error());
+        CHECK(cli_error_like(result.error_details(),
             ".*invalid value '-50.1', should meet constraint: 'positive'"));
     }
 
@@ -141,8 +141,8 @@ TEST_CASE("map_vector") {
                 ->ranges({{10.5, 20.8}, {40.5, 60.5}})
                 ->examine([](float &v) -> bool { return v == (int)v; }, "integer")),
             "--arg_name", "key1", "4.0");
-        CHECK(parser.error());
-        CHECK(cli_error_like(parser.error_details(),
+        CHECK(result.error());
+        CHECK(cli_error_like(result.error_details(),
             ".*invalid value '4.0', should meet constraint: "
             "\\(in-set\\{(5\\.12|, |1\\.1|, |5.*){5}\\} or within-ranges\\[\\(10\\.5, 20\\.8\\), \\(40\\.5, 60\\.5\\)\\]\\) and 'integer'"));
     }
@@ -153,8 +153,8 @@ TEST_CASE("map_vector") {
                 ->ranges({{10.5, 20.8}, {40.5, 60.5}})
                 ->examine([](float &v) -> bool { return v == (int)v; }, "integer")),
             "--arg_name", "key1", "40.8");
-        CHECK(parser.error());
-        CHECK(cli_error_like(parser.error_details(),
+        CHECK(result.error());
+        CHECK(cli_error_like(result.error_details(),
             ".*invalid value '40.8', should meet constraint: "
             "\\(in-set\\{(5\\.12|, |1\\.1|, |5.*){5}\\} or within-ranges\\[\\(10\\.5, 20\\.8\\), \\(40\\.5, 60\\.5\\)\\]\\) and 'integer'"));
     }

@@ -11,7 +11,7 @@ std::ostream &operator << (std::ostream &os, const MyStruct &obj) {
     return os;
 }
 
-void __parse_by_parser(MyStruct &obj, cliargs::ArgParser &parser, const std::string &name) {
+void cliargs_parse_by_parser(MyStruct &obj, cliargs::ArgParser &parser, const std::string &name) {
     parser.domain_begin(name.empty() ? "MyStruct" : name); // tell ArgParser the struct's name
     if (parser.assign(obj.name, "name")) { // MyStruct::name required a string value
         parser.check(!obj.name.empty(), "invalid name: empty");
@@ -64,9 +64,9 @@ int main(int argc, char *argv[]) {
         ;
     // Parse
     auto result = parser.parse(argc, argv);
-    if (parser.error() || result["help"].as<bool>()) {
-        parser.print_help();
-        return parser.error() ? -1 : 0;
+    if (result.error() || result["help"].as<bool>()) {
+        result.print_help();
+        return result.error() ? -1 : 0;
     }
     // Use result
     std::cout << "my_struct: " << cliargs::to_string(result["my_struct"].as<MyStruct>()) << std::endl;

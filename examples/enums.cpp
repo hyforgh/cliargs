@@ -14,7 +14,7 @@ std::ostream &operator << (std::ostream &os, const MyStruct &obj) {
     return os;
 }
 
-void __parse_by_parser(MyStruct &obj, cliargs::ArgParser &parser, const std::string &name = "MyStruct") {
+void cliargs_parse_by_parser(MyStruct &obj, cliargs::ArgParser &parser, const std::string &name = "MyStruct") {
     parser.domain_begin(name);
     if (parser.assign(obj.name, "name")) { // MyStruct::name required a string value
         parser.check(!obj.name.empty(), "an empty string");
@@ -29,7 +29,7 @@ int main(int argc, char *argv[]) {
     //  Create a 'cliargs::Parser' instance
     cliargs::Parser parser("MyProgram", "One line description of MyProgram");
     // Define arguments
-    parser.sensitive_mode().add_args()
+    parser.add_args()
         ('h', "help", "Print this message and exit") // a bool argument
         ('s', "str", "A string enum" "\ndump - dump to file" "\nload - load from file",
             cliargs::value<std::string>()
@@ -60,9 +60,9 @@ int main(int argc, char *argv[]) {
         ;
     // Parse
     auto result = parser.parse(argc, argv);
-    if (parser.error() || result["help"].as<bool>()) {
-        parser.print_help();
-        return parser.error() ? -1 : 0;
+    if (result.error() || result["help"].as<bool>()) {
+        result.print_help();
+        return result.error() ? -1 : 0;
     }
     // Use result
     std::cout << "str: " << cliargs::to_string(result["str"].as<std::string>()) << std::endl;

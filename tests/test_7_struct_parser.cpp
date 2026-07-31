@@ -9,7 +9,7 @@ std::ostream &operator << (std::ostream &os, const MyStruct &obj) {
     os << "{.name=\"" << obj.name << "\", .gain=" << obj.gain << ", .flag=" << obj.flag << "}";
     return os;
 }
-void __parse_by_parser(MyStruct &obj, cliargs::ArgParser &parser, const std::string &name) {
+void cliargs_parse_by_parser(MyStruct &obj, cliargs::ArgParser &parser, const std::string &name) {
     parser.domain_begin(name.empty() ? "MyStruct" : name);
     if (parser.assign(obj.name, "name")) {
         parser.check(!obj.name.empty(), "an empty name");
@@ -39,15 +39,15 @@ TEST_CASE("struct_parser") {
 
     SECTION("single-too-few") {
         CLI_TEST_DEFINE_NORM_ARG((MyStruct), (), "--arg_name", "data");
-        CHECK(parser.error());
-        CHECK(cli_error_like(parser.error_details(),
+        CHECK(result.error());
+        CHECK(cli_error_like(result.error_details(),
             ".*a\\(n\\) 'float32' value is required as 'MyStruct\\.gain'"));
     }
 
     SECTION("single-too-many") {
         CLI_TEST_DEFINE_NORM_ARG((MyStruct), (), "--arg_name", "data", "1.5", "2", "9");
-        CHECK(parser.error());
-        CHECK(cli_error_like(parser.error_details(),
+        CHECK(result.error());
+        CHECK(cli_error_like(result.error_details(),
             ".*too many value '9'"));
     }
 
@@ -89,16 +89,16 @@ TEST_CASE("struct_parser") {
     SECTION("single-parse-faield") {
         CLI_TEST_DEFINE_NORM_ARG((MyStruct), ()
             , "--arg_name", "", "5.12", "2");
-        CHECK(parser.error());
-        CHECK(cli_error_like(parser.error_details(), ".*an empty name"));
+        CHECK(result.error());
+        CHECK(cli_error_like(result.error_details(), ".*an empty name"));
     }
 
     SECTION("single-examine-faield") {
         CLI_TEST_DEFINE_NORM_ARG((MyStruct), (
                 ->examine([](MyStruct &v) -> bool { return v.name.length() > 2; }, "name length > 2"))
             , "--arg_name", "ha", "5.12", "2");
-        CHECK(parser.error());
-        CHECK(cli_error_like(parser.error_details(),
+        CHECK(result.error());
+        CHECK(cli_error_like(result.error_details(),
             ".*should meet constraint: 'name length > 2'"));
     }
 
@@ -123,16 +123,16 @@ TEST_CASE("struct_parser") {
     SECTION("vector-too-few") {
         CLI_TEST_DEFINE_NORM_ARG((std::vector<MyStruct>), ()
             , "--arg_name", "data", "1.5", "2", "--arg_name", "bin");
-        CHECK(parser.error());
-        CHECK(cli_error_like(parser.error_details(),
+        CHECK(result.error());
+        CHECK(cli_error_like(result.error_details(),
             ".*a\\(n\\) 'float32' value is required as 'vector\\[1\\].gain'"));
     }
 
     SECTION("vector-too-many") {
         CLI_TEST_DEFINE_NORM_ARG((std::vector<MyStruct>), ()
             , "--arg_name", "data", "1.5", "2" "--arg_name", "bin", "2.5", "3", "9");
-        CHECK(parser.error());
-        CHECK(cli_error_like(parser.error_details(),
+        CHECK(result.error());
+        CHECK(cli_error_like(result.error_details(),
             ".*too many value '9'"));
     }
 
@@ -166,16 +166,16 @@ TEST_CASE("struct_parser") {
     SECTION("map-too-few") {
         CLI_TEST_DEFINE_NORM_ARG((std::map<std::string, MyStruct>), ()
             , "--arg_name", "key1", "data", "1.5", "2", "--arg_name", "key2", "bin");
-        CHECK(parser.error());
-        CHECK(cli_error_like(parser.error_details(),
+        CHECK(result.error());
+        CHECK(cli_error_like(result.error_details(),
             ".*a\\(n\\) 'float32' value is required as 'map\\[\"key2\"\\]\\.gain'"));
     }
 
     SECTION("map-too-many") {
         CLI_TEST_DEFINE_NORM_ARG((std::map<std::string, MyStruct>), ()
             , "--arg_name", "key1", "data", "1.5", "2", "--arg_name", "key2", "bin", "2.5", "3", "9");
-        CHECK(parser.error());
-        CHECK(cli_error_like(parser.error_details(),
+        CHECK(result.error());
+        CHECK(cli_error_like(result.error_details(),
             ".*too many value '9'"));
     }
 

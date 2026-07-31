@@ -7,7 +7,6 @@ int main(int argc, char *argv[]) {
         ("version", "print version")
         ("cmd", "commands", cliargs::value<std::string>()
             ->positional()
-            ->sensitive_mode()
             ->choices({"add", "log", "commit"})
             )
         ("arg", "arguments", cliargs::value<std::vector<char *>>()
@@ -33,8 +32,8 @@ int main(int argc, char *argv[]) {
         ("amend", "amend commit")
         ;
     auto result = parser.parse(argc, argv);
-    if (parser.error()) {
-        parser.print_help();
+    if (result.error()) {
+        result.print_help();
         return -1;
     }
     auto &cmd = result["cmd"].as<std::string>();
@@ -43,13 +42,13 @@ int main(int argc, char *argv[]) {
     auto parse_sub = [&](cliargs::Parser &cmd_parser, cliargs::Result &cmd_result) {
         cmd_result = cmd_parser.parse(arg.size(), const_cast<char **>(arg.data()), 0);
         if (result["help"].as<bool>()) {
-            if (cmd_parser.error() || cmd_result["help"].as<bool>()) {
-                cmd_parser.print_help();
-                if (cmd_parser.error()) {
+            if (cmd_result.error() || cmd_result["help"].as<bool>()) {
+                cmd_result.print_help();
+                if (cmd_result.error()) {
                     exit(-1);
                 }
             } else {
-                parser.print_help();
+                parser.print_help(nullptr);
             }
             exit(0);
         }
@@ -67,7 +66,7 @@ int main(int argc, char *argv[]) {
         std::cout << "message:" << cliargs::to_string(cmd_result["message"].as<std::string>()) << std::endl;
         std::cout << "  amend:" << cliargs::to_string(cmd_result["amend"].as<bool>()) << std::endl;
     } else {
-        parser.print_help();
+        result.print_help();
         return 0;
     }
     return 0;

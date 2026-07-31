@@ -17,7 +17,7 @@ std::ostream &operator << (std::ostream &os, const MyStruct &obj) {
     return os;
 }
 
-void __parse_by_parser(MyStruct &obj, cliargs::ArgParser &parser, const std::string &name = "MyStruct") {
+void cliargs_parse_by_parser(MyStruct &obj, cliargs::ArgParser &parser, const std::string &name = "MyStruct") {
     parser.domain_begin(name);
     parser.assign(obj.name, "name"); // MyStruct::name required a string value
     parser.assign(obj.offset, "offset"); // MyStruct::offset required an uint64 value
@@ -34,7 +34,7 @@ int main(int argc, char *argv[]) {
     //  Create a 'cliargs::Parser' instance
     cliargs::Parser parser("MyProgram", "One line description of MyProgram");
     // Define arguments
-    parser.set_width(100).sensitive_mode().add_args()
+    parser.set_width(100).add_args()
         ('h', "help", "Print this message and exit") // a bool argument
         ('v', "value", "An interger",
             cliargs::value<int>()
@@ -66,7 +66,7 @@ int main(int argc, char *argv[]) {
             ->implicit_value({"", 0, 0, 0})->line_width(2)
                 // If user only specifies first 3 values, the last one while be automatically setted to 3
             )
-        ('l', "load", "Load data from file. usage `--load file_name [offset [size [desc]]]`",
+        ('l', "load", "Load data from file. usage `--load file_name offset [size [desc]]`",
             cliargs::value<std::vector<MyStruct>>()->data_count(1, -1)
             )
         ('f', "flag", "set flag", cliargs::value<int>())
@@ -77,9 +77,9 @@ int main(int argc, char *argv[]) {
         ;
     // Parse
     auto result = parser.parse(argc, argv);
-    if (parser.error() || result["help"].as<bool>()) {
-        parser.print_help();
-        return parser.error() ? -1 : 0;
+    if (result.error() || result["help"].as<bool>()) {
+        result.print_help();
+        return result.error() ? -1 : 0;
     }
     // Use result
     std::cout << "value: " << cliargs::to_string(result["value"].as<int>()) << std::endl;
