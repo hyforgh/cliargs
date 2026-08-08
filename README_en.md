@@ -411,57 +411,7 @@ parser.add_args()
 * If a pointer type is embedded within a struct and assigned using cliargs_parse_by_parser, the pointer will point to the string passed by the program user to the main function.
 * If a pointer type is embedded within a struct and assigned using cliargs_parse_by_format, the developer must ensure the validity of the pointer.
 
-## 4.3 String Serialization Utility
-
-```c++
-template <typename T>
-std::string cliargs::to_string(const T &value
-    , const std::string &delimiter = ","
-    , const std::string &gap = " "
-    );
-```
-
-This utility converts composite data types into strings.
-
-Example:
-
-```c++
-std::map<std::string, std::tuple<int, std::vector<float>>> data = {
-    {"key1", {1, {2.5, 3.5}}},
-    {"key2", {2, {4.5, 5.5}}},
-};
-std::cout << cliargs::to_string(data) << std::endl;
-```
-
-Output:
-
-```log
-{"key1": (1, [2.5, 3.5]), "key2": (2, [4.5, 5.5])}
-```
-
-## 4.4 Type Name Retrieval Utility
-
-```c++
-template <typename T>
-const std::string &cliargs::type_traits<T>::name();
-```
-
-This utility retrieves the string representation of a composite data type's name. For custom struct types, you must first overload either cliargs_parse_by_parser or cliargs_parse_by_format.
-
-Example:
-
-```c++
-typedef std::map<std::string, std::tuple<int, std::vector<float>>> MyType;
-std::cout << cliargs::type_traits<MyType>::name() << std::endl;
-```
-
-Output:
-
-```log
-map<string, tuple<int, vector<float>>>
-```
-
-## 4.6 About GNU Mode
+## 4.3 About GNU Mode
 
 In the default mode:
 

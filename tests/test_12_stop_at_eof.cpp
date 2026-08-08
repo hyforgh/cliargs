@@ -4,7 +4,7 @@
 
 TEST_CASE("stop_at_eof_gnu") {
     cliargs::Parser parser;
-    parser.add_args()
+    parser.gnu_mode().add_args()
         ('i', "int", "An interger", cliargs::value<int>()->default_value(-1))
         ('v', "vec", "An int vector", cliargs::value<std::vector<float>>()->data_count(1, 2))
         ;
@@ -20,7 +20,7 @@ TEST_CASE("stop_at_eof_gnu") {
     }
 }
 
-TEST_CASE("stop_at_eof_sensitive") {
+TEST_CASE("stop_at_eof") {
     cliargs::Parser parser;
     parser.add_args()
         ('i', "int", "An interger", cliargs::value<int>()->default_value(-1))

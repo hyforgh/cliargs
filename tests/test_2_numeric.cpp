@@ -7,6 +7,19 @@ TEST_CASE("scalar_numeric") {
         CHECK(arg_value.as<int>() == 5);
     }
 
+    SECTION("overflow") {
+        CLI_TEST_DEFINE_NORM_ARG((char), (), "--arg_name", "128");
+        CHECK(result.error());
+        CHECK(cli_error_like(result.error_details(),
+            ".*format error: '128', expect a\\(n\\) 'char\\(-128 ~ 127\\)' value"));
+    }
+
+    SECTION("simple=value") {
+        CLI_TEST_DEFINE_NORM_ARG((int), (), "--arg_name=5");
+        CHECK(arg_value.valid());
+        CHECK(arg_value.as<int>() == 5);
+    }
+
     SECTION("simple-negative") {
         CLI_TEST_DEFINE_NORM_ARG((int), (), "--arg_name", "-5");
         CHECK(arg_value.valid());

@@ -358,45 +358,7 @@ parser.add_args()
 * 如果将指针类型嵌入到结构体中，且采用 `cliargs_parse_by_parser` 为结构体成员赋值，则指针类型将指向程序用户传递给 `main` 函数的字符串
 * 如果将指针类型嵌入到结构体中，且采用 `cliargs_parse_by_format` 为结构体成员赋值，请**程序开发者自行保证指针的有效性**
 
-## 4.3 字符串序列化工具
-```c++
-template <typename T>
-std::string cliargs::to_string(const T &value
-    , const std::string &delimiter = ","
-    , const std::string &gap = " "
-    );
-```
-可将组合数据类型转换成字符串。
-* 示例：
-```c++
-std::map<std::string, std::tuple<int, std::vector<float>>> data = {
-    {"key1": {1, {2.5, 3.5}}},
-    {"key2": {2, {4.5, 5.5}}},
-};
-std::cout << cliargs::to_string(data) << std::endl;
-```
-* 输出：
-```log
-{"key1": (1, [2.5, 3.5]), "key2": (2, [4.5, 5.5])}
-```
-
-## 4.4 获取类型名称的工具
-```c++
-template <typename T>
-const std::string &cliargs::type_traits<T>::name();
-```
-可获得组合数据类型的字符串名称。对于自定义结构体类型，需要先重载 `cliargs_parse_by_parser` 或 `cliargs_parse_by_format`。
-* 示例：
-```c++
-typedef std::map<std::string, std::tuple<int, std::vector<float>>> MyType;
-std::cout << cliargs::type_traits<MyType>::name() << std::endl;
-```
-* 输出：
-```log
-map<string, tuple<int, vector<float>>>
-```
-
-## 4.5 关于 GNU 模式
+## 4.3 关于 GNU 模式
 默认模式下：
 1. 当命令参数类型为字符串时，cliargs 会将以减号（`-`）开始的字符串（除了负数）当做命令行参数名称
 2. 如果需要输入以减号（`-`）开始的字符串作为字符串类型的命令行参数值，请在减号前添加反斜杠（`\\`，在 shell 和 C++ 语言中，我们需要输入两个）。cliargs 会自动去掉命令行参数值开头的第一个反斜杠（`\`）

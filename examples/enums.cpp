@@ -55,7 +55,7 @@ int main(int argc, char *argv[]) {
         )
         ('u', "user", "An struct enum",
             cliargs::value<MyStruct>()
-            ->examine([](MyStruct &obj) -> bool { return obj.size > 0; }, "size should greater than 0")
+            ->examine([](MyStruct &obj) -> bool { return obj.offset % 4 == 0; }, "offset should be multile of 4")
         )
         ;
     // Parse

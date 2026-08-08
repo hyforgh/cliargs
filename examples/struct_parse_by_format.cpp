@@ -1,3 +1,4 @@
+#include <set>
 #include "cliargs.hpp"
 
 struct MyStruct {

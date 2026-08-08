@@ -11,7 +11,7 @@ TEST_CASE("positional") {
             )
         ('v', "vector", "vector with limits", cliargs::value<std::vector<float>>()
             ->positional()
-            ->data_count(2)
+            ->data_count(2, 2)
             )
         ;
     

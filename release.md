@@ -1,5 +1,18 @@
 # Release Notes
 
+## 3.0.0
+**TL;DR: Major API refactor & behavior change.** The `data_count(int fixed_count)` and `line_width(int fixed_count)` method has been removed, and the `data_count(int, int)` and `line_width(int, int)` signature has been updated.
+
+**Breaking Changes**
+* **API Removal**: The `data_count(int fixed_count)` and `line_width(int fixed_count)` method has been completely removed.
+* **Signature Change**: The `data_count(int at_least, int at_most)` method has been replaced with `data_count(int at_least, int at_most = -1)`. While this adds a default value for convenience, it alters the function signature. This will break existing code that relies on function pointers or strict template deduction matching the old signature.
+* **Signature Change**: The `line_width(int at_least, int at_most)` method has been replaced with `line_width(int at_least, int at_most = -1)`. While this adds a default value for convenience, it alters the function signature. This will break existing code that relies on function pointers or strict template deduction matching the old signature.
+
+**Bug Fixes**
+* Fixed an issue where integer boundary checks were ineffective.
+* Fixed a bug where `implicit_value` caused the lower bound of `line_width` to be ignored.
+
+
 ## 2.0.0
 **TL;DR: Major API refactor & behavior change.** The `error()` and `print_help()` methods have been moved from `Parser` to `Result`. The default parsing mode has switched from GNU mode to Smart mode (`sensitive_mode`).
 
