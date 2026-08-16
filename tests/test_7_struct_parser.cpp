@@ -41,7 +41,7 @@ TEST_CASE("struct_parser") {
         CLI_TEST_DEFINE_NORM_ARG((MyStruct), (), "--arg_name", "data");
         CHECK(result.error());
         CHECK(cli_error_like(result.error_details(),
-            ".*a\\(n\\) 'float32' value is required as 'MyStruct\\.gain'"));
+            ".*a\\(n\\) 'float32' value is required as '.*\\.gain'"));
     }
 
     SECTION("single-too-many") {
@@ -125,7 +125,7 @@ TEST_CASE("struct_parser") {
             , "--arg_name", "data", "1.5", "2", "--arg_name", "bin");
         CHECK(result.error());
         CHECK(cli_error_like(result.error_details(),
-            ".*a\\(n\\) 'float32' value is required as 'vector\\[1\\].gain'"));
+            ".*a\\(n\\) 'float32' value is required as 'vector.*\\[1\\].gain'"));
     }
 
     SECTION("vector-too-many") {
@@ -168,7 +168,7 @@ TEST_CASE("struct_parser") {
             , "--arg_name", "key1", "data", "1.5", "2", "--arg_name", "key2", "bin");
         CHECK(result.error());
         CHECK(cli_error_like(result.error_details(),
-            ".*a\\(n\\) 'float32' value is required as 'map\\[\"key2\"\\]\\.gain'"));
+            ".*a\\(n\\) 'float32' value is required as 'map.*\\[\"key2\"\\]\\.gain'"));
     }
 
     SECTION("map-too-many") {

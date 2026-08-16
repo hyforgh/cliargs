@@ -13,7 +13,7 @@ std::ostream &operator << (std::ostream &os, const MyStruct &obj) {
 }
 
 const char *cliargs_parse_by_format(MyStruct &obj, char *psz
-        , std::string name, std::list<std::string> &err_list
+        , const std::string &name, std::list<std::string> &err_list
         , void *context, char *parent) {
     const char *type_name = "\"string,float[,long]\"";
     if (!psz || !psz[0]) {

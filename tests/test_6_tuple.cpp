@@ -20,7 +20,7 @@ TEST_CASE("vector_numeric") {
             , "--arg_name", "name");
         CHECK(result.error());
         CHECK(cli_error_like(result.error_details(),
-            ".*a\\(n\\) 'float32' value is required as 'tuple<1>'"));
+            ".*a\\(n\\) 'float32' value is required as 'tuple.*<1>'"));
     }
 
     SECTION("single-too-many") {
@@ -100,7 +100,7 @@ TEST_CASE("vector_numeric") {
         CHECK(result.error());
         std::cout << cliargs::to_string(arg_value.as<std::vector<std::tuple<std::string, float, int>>>()) << std::endl;
         CHECK(cli_error_like(result.error_details(),
-            ".*a\\(n\\) 'float32' value is required as 'vector\\[1\\]<1>'"));
+            ".*a\\(n\\) 'float32' value is required as 'vector.*\\[1\\]<1>'"));
     }
 
     SECTION("vector-too-many") {
@@ -147,7 +147,7 @@ TEST_CASE("vector_numeric") {
         CHECK(result.error());
         std::cout << cliargs::to_string(arg_value.as<std::map<std::string, std::tuple<std::string, float, int>>>()) << std::endl;
         CHECK(cli_error_like(result.error_details(),
-            ".*a\\(n\\) 'float32' value is required as 'map\\[\"key2\"\\]<1>'"));
+            ".*a\\(n\\) 'float32' value is required as 'map.*\\[\"key2\"\\]<1>'"));
     }
 
     SECTION("map-too-many") {

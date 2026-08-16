@@ -10,7 +10,7 @@ struct MyStruct {
 };
 // overload oerator << for printing default-value and enum-value in help
 std::ostream &operator << (std::ostream &os, const MyStruct &obj) {
-    os << "{.name=" << obj.name << ", .offset=" << obj.offset << ", .size=" << obj.size << "}";
+    os << "{.name=\"" << obj.name << "\", .offset=" << obj.offset << ", .size=" << obj.size << "}";
     return os;
 }
 

@@ -1,82 +1,84 @@
-# Release Notes
+# 更新日志 (Release Notes)
 
 ## 3.0.0
-**TL;DR: Major API refactor & behavior change.** The `data_count(int fixed_count)` and `line_width(int fixed_count)` method has been removed, and the `data_count(int, int)` and `line_width(int, int)` signature has been updated.
+**摘要：重大 API 重构与行为变更。** 移除了 `data_count(int fixed_count)` 和 `line_width(int fixed_count)` 方法，并更新了 `data_count(int, int)` 与 `line_width(int, int)` 的函数签名。
 
-**Breaking Changes**
-* **API Removal**: The `data_count(int fixed_count)` and `line_width(int fixed_count)` method has been completely removed.
-* **Signature Change**: The `data_count(int at_least, int at_most)` method has been replaced with `data_count(int at_least, int at_most = -1)`. While this adds a default value for convenience, it alters the function signature. This will break existing code that relies on function pointers or strict template deduction matching the old signature.
-* **Signature Change**: The `line_width(int at_least, int at_most)` method has been replaced with `line_width(int at_least, int at_most = -1)`. While this adds a default value for convenience, it alters the function signature. This will break existing code that relies on function pointers or strict template deduction matching the old signature.
+**破坏性变更 (Breaking Changes)**
+* **API 移除**：彻底移除了 `data_count(int fixed_count)` 和 `line_width(int fixed_count)` 方法。
+* **签名变更**：`data_count(int at_least, int at_most)` 方法已替换为 `data_count(int at_least, int at_most = -1)`。虽然增加了默认值以提供便利，但这改变了函数签名。依赖旧签名的函数指针或严格的模板推导的现有代码将会中断。
+* **签名变更**：`line_width(int at_least, int at_most)` 方法已替换为 `line_width(int at_least, int at_most = -1)`。虽然增加了默认值以提供便利，但这改变了函数签名。依赖旧签名的函数指针或严格的模板推导的现有代码将会中断。
 
-**Bug Fixes**
-* Fixed an issue where integer boundary checks were ineffective.
-* Fixed a bug where `implicit_value` caused the lower bound of `line_width` to be ignored.
+**Bug 修复**
+* 修复了整数边界检查失效的问题。
+* 修复了 `implicit_value` 导致 `line_width` 下限被忽略的 Bug。
 
 
 ## 2.0.0
-**TL;DR: Major API refactor & behavior change.** The `error()` and `print_help()` methods have been moved from `Parser` to `Result`. The default parsing mode has switched from GNU mode to Smart mode (`sensitive_mode`).
+**摘要：重大 API 重构与行为变更。** `error()` 和 `print_help()` 方法已从 `Parser` 移至 `Result`。默认解析模式已从 GNU 模式切换为 Smart 模式 (`sensitive_mode`)。标量类型参数允许被重复指定，最后一次指定的值被采纳。
 
-**Breaking Changes**
-* **API Migration**: The `error()` and `print_help()` methods have been moved from the `Parser` class to the `Result` class. You should now call `Result::error()` and `Result::print_help()`.
-* **Parser Interface Updates**: 
-  * `Parser::error()` now requires a `const Result*` parameter.
-  * `Parser::print_help()` now requires a `const Result*` parameter and supports additional arguments.
-* **Default Mode Change**: The default parsing mode has been changed from GNU mode to Smart mode (`sensitive_mode`).
-* **Mode Renaming**: The `Parser::sensitive_mode()` method has been replaced by `Parser::gnu_mode()`.
-* **Custom Parsing API**: The internal parsing functions have been renamed to avoid reserved identifiers. Please update your code to use `cliargs_parse_by_format` and `cliargs_parse_by_parser` instead of `__parse_by_format` and `__parse_by_parser`.
-* **Removed Attribute**: The `ArgAttr::sensitive_mode()` attribute has been removed.
+**破坏性变更 (Breaking Changes)**
+* **API 迁移**：`error()` 和 `print_help()` 方法已从 `Parser` 类移至 `Result` 类。现在应调用 `Result::error()` 和 `Result::print_help()`。
+* **Parser 接口更新**：
+  * `Parser::error()` 现在需要传入 `const Result*` 参数。
+  * `Parser::print_help()` 现在需要传入 `const Result*` 参数。
+* **默认模式变更**：默认解析模式已从 GNU 模式更改为 Smart 模式 (`sensitive_mode`)。
+* **模式重命名**：`Parser::sensitive_mode()` 方法已被 `Parser::gnu_mode()` 取代。
+* **自定义解析 API**：内部解析函数已重命名以避免使用保留标识符。请将代码中的 `__parse_by_format` 和 `__parse_by_parser` 更新为 `cliargs_parse_by_format` 和 `cliargs_parse_by_parser`。
+* **属性移除**：移除了 `ArgAttr::sensitive_mode()` 属性。
+* **属性参数类型变更**：`ArgAttr::choices()` 的参数改成 `std::vector` 类型
+* **头文件变更**： `cliargs.hpp` 不再包含 `set` 和 `unordered_set` 头文件
 
 ## 1.5.0
-**TL;DR: Granular help & mode control.** Adds per-argument control for sensitive mode and concise help output.
+**摘要：细粒度帮助信息与模式控制。** 新增针对单个参数的敏感模式控制和精简帮助信息输出。
 
-**New Features**
-* Added `cliargs::value<>()->sensitive_mode()` to enable sensitive mode for specific arguments.
-* Added `cliargs::value<>()->concise_help()` to suppress auto-generated content in help messages.
+**新特性**
+* 新增 `cliargs::value<>()->sensitive_mode()`，用于为特定参数启用敏感模式。
+* 新增 `cliargs::value<>()->concise_help()`，用于在帮助信息中抑制自动生成的内容。
 
-**Bug Fixes**
-* Fixed an issue with positional arguments of the string type.
+**Bug 修复**
+* 修复了字符串类型位置参数 (positional arguments) 的相关问题。
 
 ## 1.4.0
-**TL;DR: Argument nesting support.** Introduces `tail()` and `stop_at_eof()` for handling nested command-line structures.
+**摘要：支持参数嵌套。** 引入 `tail()` 和 `stop_at_eof()` 用于处理嵌套的命令行结构。
 
-**New Features**
-* Added support for argument nesting via `cliargs::Result::tail()` and the `stop_at_eof()` attribute.
+**新特性**
+* 通过 `cliargs::Result::tail()` 和 `stop_at_eof()` 属性，新增对参数嵌套的支持。
 
-**Bug Fixes**
-* Fixed parsing bugs caused by the `--` terminator.
+**Bug 修复**
+* 修复了由 `--` 终止符引起的解析 Bug。
 
 ## 1.3.0
-**TL;DR: Aliases & negative number fixes.** Adds support for argument name aliases and resolves parsing issues with negative values.
+**摘要：支持别名与负数修复。** 新增对参数名称别名的支持，并解决了负值解析问题。
 
-**New Features**
-* Added support for argument name aliases.
+**新特性**
+* 新增对参数名称别名 (aliases) 的支持。
 
-**Bug Fixes**
-* Fixed an issue where positional arguments with negative values were incorrectly parsed.
+**Bug 修复**
+* 修复了带有负值的位置参数被错误解析的问题。
 
 ## 1.2.0
-**TL;DR: Sensitive mode & value ranges.** Introduces strict parsing (Sensitive Mode), hidden arguments, and numeric range constraints.
+**摘要：敏感模式与值范围。** 引入严格解析（敏感模式）、隐藏参数以及数值范围约束。
 
-**New Features**
-* Introduced Sensitive Mode for stricter argument parsing.
-* Added the `hide` attribute to hide specific arguments from the help message.
-* Added the `range(T min_value, T max_value, ...)` attribute for numeric value constraints.
+**新特性**
+* 引入用于更严格参数解析的敏感模式 (Sensitive Mode)。
+* 新增 `hide` 属性，用于在帮助信息中隐藏特定参数。
+* 新增 `range(T min_value, T max_value, ...)` 属性，用于数值约束。
 
-**Bug Fixes**
-* Fixed a bug where binary numbers failed to parse in certain environments.
+**Bug 修复**
+* 修复了在某些环境下二进制数解析失败的 Bug。
 
 ## 1.1.0
-**TL;DR: Binary support & validation.** Adds binary number parsing, boolean validation, and improves value reference handling.
+**摘要：支持二进制与验证。** 新增二进制数解析、布尔类型验证，并改进了值引用处理。
 
-**New Features**
-* Added support for parsing binary numbers.
-* Added the `examine` attribute for validating boolean types.
+**新特性**
+* 新增对二进制数解析的支持。
+* 新增 `examine` 属性，用于验证布尔类型。
 
-**Bug Fixes**
-* `default_value` and `implicit_value` now properly support lvalue references.
-* Fixed formatting issues in the help message output.
+**Bug 修复**
+* `default_value` 和 `implicit_value` 现已正确支持左值引用 (lvalue references)。
+* 修复了帮助信息输出的格式问题。
 
 ## 1.0.0
-**TL;DR: Initial release.** The foundational header-only C++ command-line argument parser.
+**摘要：初始发布。** 基础的头文件 C++ 命令行参数解析库。
 
-* Initial public release.
+* 首次公开发布。

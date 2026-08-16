@@ -124,6 +124,7 @@ std::string to_string(const std::tuple<Targs...> &data
 template <typename T>
 struct type_traits {
     static const std::string &name();
+    typedef std::true_type is_cli_custom;
 };
 
 #define DEFINE_TYPE_TRAITS_SCALAR(type_, name_, ...)                          \
@@ -133,6 +134,7 @@ template <> struct type_traits<type_> {                                       \
         return s_name;                                                        \
     }                                                                         \
     typedef std::true_type is_cli_scalar;                                     \
+    typedef std::true_type is_cli_primary;                                    \
 };
 #define DEFINE_TYPE_TRAITS_NUMERIC(type, name)                                \
     DEFINE_TYPE_TRAITS_SCALAR(type, name, + std::to_string(sizeof(type) * 8))
@@ -160,6 +162,7 @@ template <> struct type_traits<type_> {       \
         return s_name;                        \
     }                                         \
     typedef std::true_type is_cli_string;     \
+    typedef std::true_type is_cli_primary;    \
 };
 DEFINE_TYPE_TRAITS_STRING(char *)
 DEFINE_TYPE_TRAITS_STRING(const char *)
@@ -385,16 +388,15 @@ struct is_cli_string : std::false_type {};
 template <typename T>
 struct is_cli_string<T, void_t<typename type_traits<T>::is_cli_string>> : std::true_type {};
 
+template <typename T, typename = void>
+struct is_cli_custom : std::false_type {};
 template <typename T>
-struct is_cli_primary {
-    static constexpr bool value = is_cli_scalar<T>::value || is_cli_string<T>::value;
-};
+struct is_cli_custom<T, void_t<typename type_traits<T>::is_cli_custom>> : std::true_type {};
 
+template <typename T, typename = void>
+struct is_cli_primary : std::false_type {};
 template <typename T>
-struct is_cli_custom {
-    static constexpr bool value = !is_cli_primary<T>::value \
-        && !is_cli_container<T>::value && !is_stl_tuple<T>::value;
-};
+struct is_cli_primary<T, void_t<typename type_traits<T>::is_cli_primary>> : std::true_type {};
 
 template <typename T, bool IS_CONTAINER> 
 struct get_container_value_type;
@@ -574,21 +576,19 @@ struct get_max_capacity<std::tuple<Targs...>, std::tuple<Targs...>> {
     enum { value = sizeof ...(Targs) };
 };
 
-template <typename T>
+template <typename T, typename Enable = void>
 struct get_implicit_value_type {
-    typedef typename get_cli_level_type<T>::mid_type type;
+    typedef typename get_cli_level_type<T>::val_type type;
 };
 template <typename Tval>
-struct get_implicit_value_type<std::vector<Tval>> {
+struct get_implicit_value_type<std::vector<Tval>
+        , typename std::enable_if<is_cli_primary<Tval>::value>::type> {
     typedef std::vector<Tval> type;
 };
 template <typename Tval>
-struct get_implicit_value_type<std::vector<std::vector<Tval>>> {
+struct get_implicit_value_type<std::vector<std::vector<Tval>>
+        , typename std::enable_if<is_cli_primary<Tval>::value>::type> {
     typedef std::vector<Tval> type;
-};
-template <typename... Ts>
-struct get_implicit_value_type<std::vector<std::tuple<Ts...>>> {
-    typedef std::tuple<Ts...> type;
 };
 template <typename Tkey, typename Ttop>
 struct get_implicit_value_type<std::map<Tkey, Ttop>> {
@@ -635,12 +635,12 @@ public:
         int i = 0;
         for (auto &it : _item_traits) {
             if (i >= _at_least && _is_optional) {
-                ss << "[";
+                ss << " [";
             }
             if (i) {
                 ss << ", ";
             }
-            ss << it.first;
+            ss << "." << it.second << ":" << it.first;
             ++i;
         }
         for (i = 0; i < (int)_item_traits.size(); ++i) {
@@ -680,6 +680,7 @@ private:
     virtual bool is_hidden() const = 0;
     virtual bool is_concise_help() const = 0;
     virtual SmartMode smart_mode() const = 0;
+    virtual const std::string &name() const = 0;
 }; // ArgAttrI
 
 template <typename T>
@@ -696,7 +697,7 @@ public:
     typedef typename get_choices_value_type<Ttop>::type choices_value_t;
 
 public:
-    explicit ArgAttrT()
+    explicit ArgAttrT(std::string name = "")
             : _is_positional(false)
             , _has_default_value(false)
             , _has_implicit_value(false)
@@ -708,6 +709,7 @@ public:
             , _is_hidden(false)
             , _concise_help(false)
             , _smart_mode(SmartMode::Gnu)
+            , _name(std::move(name))
     {
         static_assert(!is_cli_container<Tval>::value && !(is_cli_container<Tmid>::value && is_stl_tuple<Tval>::value)
             , "Too many nested levels of containers");
@@ -717,6 +719,9 @@ public:
             set_dim_1_limit(0, 1);
         } else if (is_stl_vector<Ttop>::value && std::is_same<Tmid, Tval>::value) {
             _dim_1_at_most = _dim_0_at_most;
+        }
+        if (_name.empty()) {
+            _name = type_traits<T>::name();
         }
     }
 
@@ -926,6 +931,9 @@ protected:
     SmartMode smart_mode() const override {
         return _smart_mode;
     }
+    const std::string &name() const override {
+        return _name;
+    }
 
 private:
     unsigned dim_0_at_least() const {
@@ -1008,6 +1016,7 @@ private:
     std::string _match_ranges_desc;
     std::function<bool (Tval &, void *context, void *arg_data)> _match_examine_func;
     std::string _match_examine_desc;
+    std::string _name;
 }; // ArgAttrT
 
 template <typename T>
@@ -1055,13 +1064,18 @@ private:
 }; // ArgDataT
 
 template <typename T, typename Enable = void>
-class ArgAttrTval : public ArgAttrT<T> {};
+class ArgAttrTval : public ArgAttrT<T> {
+public:
+    template<typename... Ts>
+    ArgAttrTval(Ts... args) : ArgAttrT<T>(args...) {}
+};
 template <typename T>
 class ArgAttrTval<T, typename std::enable_if<is_cli_scalar<typename get_cli_level_type<T>::val_type>::value>::type>
         : public ArgAttrT<T> {
     typedef typename ArgAttrT<T>::Tval Tval;
 public:
-    ArgAttrTval() : ArgAttrT<T>() {}
+    template<typename... Ts>
+    ArgAttrTval(Ts... args) : ArgAttrT<T>(args...) {}
     std::shared_ptr<ArgAttr<T>> range(Tval min_value, Tval max_value) {
         _value_ranges.emplace_back(min_value, max_value);
         return ranges(std::move(_value_ranges));
@@ -1089,7 +1103,8 @@ template <typename T>
 class ArgAttrTval<T, typename std::enable_if<is_cli_string<typename get_cli_level_type<T>::val_type>::value>::type>
         : public ArgAttrT<T> {
 public:
-    ArgAttrTval() : ArgAttrT<T>() {}
+    template<typename... Ts>
+    ArgAttrTval(Ts... args) : ArgAttrT<T>(args...) {}
     std::shared_ptr<ArgAttr<T>> regex(std::string regex_string, std::string desc = "") {
         _regex_string = std::move(regex_string);
         _regex_object = std::regex(_regex_string);
@@ -1120,13 +1135,13 @@ struct get_capacity {
     }
 };
 
-template <typename Ttop>
+template <typename Tval>
 struct DataParser {
-    static ParseResult parse(Ttop &value, char *argv[], int argc
+    static ParseResult parse(Tval &value, char *argv[], int argc
             , std::list<std::string> &err_list, SmartMode smart_mode
             , void *context, void *arg_data, unsigned at_least, unsigned at_most
-            , std::function<std::string(Ttop &, void *)> examine
-            , std::function<const typename get_implicit_value_type<Ttop>::type &()> get_implicit_value
+            , std::function<std::string(Tval &, void *)> examine
+            , std::function<const typename get_implicit_value_type<Tval>::type &()> get_implicit_value
             , const std::string &name = ""
             ) {
         std::list<std::string> err_tmp;
@@ -1148,12 +1163,12 @@ struct DataParser {
         if ((ret.vali || get_implicit_value) && examine) {
             auto err_detail = examine(value, arg_data);
             if (!err_detail.empty()) {
-                static auto item_at_most = get_capacity<Ttop>::at_most(smart_mode);
+                static auto item_at_most = get_capacity<Tval>::at_most(smart_mode);
                 std::stringstream ss;
                 ss << "invalid value";
                 if (item_at_most > 1) {
                     ss << " group '" << to_string(std::vector<char *>(argv, argv + ret.vali))
-                       << " (as type " << type_traits<Ttop>::name() << ")";
+                       << " (as type " << type_traits<Tval>::name() << ")";
                 } else {
                     ss << " '" << *argv << "'";
                 }
@@ -1163,16 +1178,6 @@ struct DataParser {
         }
         return ret;
     }
-};
-template <typename... Targs>
-struct DataParser<std::tuple<Targs...>> {
-    static ParseResult parse(std::tuple<Targs...> &value, char *argv[], int argc
-            , std::list<std::string> &err_list, SmartMode smart_mode
-            , void *context, void *arg_data, unsigned at_least, unsigned at_most
-            , std::function<std::string(std::tuple<Targs...> &, void *)> examine
-            , std::function<const std::tuple<Targs...> &()> get_implicit_value
-            , const std::string &name = "tuple"
-            );
 };
 template <typename Tmid>
 struct DataParser<std::vector<Tmid>> {
@@ -1258,54 +1263,61 @@ struct TupleParser<0, Targs...> {
     }
 };
 template <typename... Targs>
-ParseResult DataParser<std::tuple<Targs...>>::parse(std::tuple<Targs...> &value, char *argv[], int argc
-        , std::list<std::string> &err_list, SmartMode smart_mode
-        , void *context, void *arg_data, unsigned at_least, unsigned at_most
-        , std::function<std::string(std::tuple<Targs...> &, void *)> examine
-        , std::function<const std::tuple<Targs...> &()> get_implicit_value
-        , const std::string &name
-        ) {
-    std::list<std::string> err_tmp;
-    auto ret = TupleParser<sizeof ...(Targs) - 1, Targs...>::parse(
-        value, argv, argc, err_tmp, smart_mode
-        , context, arg_data, at_least, at_most, examine, get_implicit_value
-        , (name.empty() ? std::string("tuple") : name)
-        );
-    if (err_tmp.empty()) {
-        if (examine) {
-            auto err_detail = examine(value, arg_data);
-            if (!err_detail.empty()) {
-                err_list.emplace_back(std::move(err_detail));
+struct DataParser<std::tuple<Targs...>> {
+    static ParseResult parse(std::tuple<Targs...> &value, char *argv[], int argc
+            , std::list<std::string> &err_list, SmartMode smart_mode
+            , void *context, void *arg_data, unsigned at_least, unsigned at_most
+            , std::function<std::string(std::tuple<Targs...> &, void *)> examine
+            , std::function<const std::tuple<Targs...> &()> get_implicit_value
+            , const std::string &name = "tuple"
+            ) {
+        std::list<std::string> err_tmp;
+        auto ret = TupleParser<sizeof ...(Targs) - 1, Targs...>::parse(
+            value, argv, argc, err_tmp, smart_mode
+            , context, arg_data, at_least, at_most, examine, get_implicit_value
+            , (name.empty() ? std::string("tuple") : name)
+            );
+        if (err_tmp.empty()) {
+            if (examine) {
+                auto err_detail = examine(value, arg_data);
+                if (!err_detail.empty()) {
+                    err_list.emplace_back(std::move(err_detail));
+                }
             }
+        } else {
+            err_list.splice(err_list.end(), err_tmp);
         }
-    } else {
-        err_list.splice(err_list.end(), err_tmp);
+        return ParseResult{ret.argi, ret.vali ? 1 : 0, ret.is_terminated};
     }
-    return ParseResult{ret.argi, ret.vali ? 1 : 0, ret.is_terminated};
-}
-template <typename Tmid, typename Tval>
-struct VectorParser {
+};
+template <typename Tmid, bool IS_PRIMARY>
+struct VectorParser;
+template <typename Tmid>
+struct VectorParser<Tmid, false> {
+    typedef std::vector<Tmid> Ttop;
+    typedef typename get_cli_level_type<Tmid>::val_type Tval;
     static ParseResult parse(std::vector<Tmid> &value, char *argv[], int argc
             , std::list<std::string> &err_list, SmartMode smart_mode
             , void *context, void *arg_data, unsigned at_least, unsigned at_most
             , std::function<std::string(Tval &, void *)> examine
-            , std::function<const typename get_implicit_value_type<std::vector<Tmid>>::type &()> get_implicit_value
+            , std::function<const typename get_implicit_value_type<Ttop>::type &()> get_implicit_value
             , const std::string &name
             ) {
-        Tmid arg_value;
-        auto ret = DataParser<Tmid>::parse(arg_value, argv, argc, err_list, smart_mode
-            , context, arg_data, at_least, at_most, examine, get_implicit_value, name);
-        value.emplace_back(std::move(arg_value));
+        value.emplace_back(Tmid());
+        auto ret = DataParser<Tmid>::parse(*value.rbegin(), argv, argc, err_list, smart_mode
+            , context, arg_data, at_least, at_most, examine, get_implicit_value
+            , (name + "[" + to_string(value.size() - 1) + "]"));
         return ParseResult{ret.argi, (int)value.size(), ret.is_terminated};
     }
 };
 template <typename Tval>
-struct VectorParser<Tval, Tval> {
+struct VectorParser<Tval, true> {
+    typedef std::vector<Tval> Ttop;
     static ParseResult parse(std::vector<Tval> &value, char *argv[], int argc
             , std::list<std::string> &err_list, SmartMode smart_mode
             , void *context, void *arg_data, unsigned at_least, unsigned at_most
             , std::function<std::string(Tval &, void *)> examine
-            , std::function<const typename get_implicit_value_type<std::vector<Tval>>::type &()> get_implicit_value
+            , std::function<const typename get_implicit_value_type<Ttop>::type &()> get_implicit_value
             , const std::string &name
             ) {
         static auto item_at_most = get_capacity<Tval>::at_most(smart_mode);
@@ -1342,23 +1354,6 @@ struct VectorParser<Tval, Tval> {
         return ParseResult{i, (int)value.size(), is_terminated};
     }
 };
-template <typename... Targs>
-struct VectorParser<std::tuple<Targs...>, std::tuple<Targs...>> {
-    static ParseResult parse(std::vector<std::tuple<Targs...>> &value, char *argv[], int argc
-            , std::list<std::string> &err_list, SmartMode smart_mode
-            , void *context, void *arg_data, unsigned at_least, unsigned at_most
-            , std::function<std::string(std::tuple<Targs...> &, void *)> examine
-            , std::function<const std::tuple<Targs...> &()> get_implicit_value
-            , const std::string &name
-            ) {
-        std::tuple<Targs...> arg_value;
-        auto ret = DataParser<std::tuple<Targs...>>::parse(arg_value, argv, argc, err_list, smart_mode
-            , context, arg_data, at_least, at_most, examine, get_implicit_value
-            , name + "[" + to_string(value.size()) + "]");
-        value.emplace_back(std::move(arg_value));
-        return ParseResult{ret.argi, ret.vali ? 1 : 0, ret.is_terminated};
-    }
-};
 template <typename Tmid>
 ParseResult DataParser<std::vector<Tmid>>::parse(std::vector<Tmid> &value, char *argv[], int argc
         , std::list<std::string> &err_list, SmartMode smart_mode
@@ -1367,30 +1362,9 @@ ParseResult DataParser<std::vector<Tmid>>::parse(std::vector<Tmid> &value, char 
         , std::function<const typename get_implicit_value_type<Ttop>::type &()> get_implicit_value
         , const std::string &name
         ) {
-    return VectorParser<Tmid, Tval>::parse(value, argv, argc, err_list, smart_mode, context, arg_data
-        , at_least, at_most, examine, get_implicit_value, name);
+    return VectorParser<Tmid, is_cli_primary<Tmid>::value>::parse(value, argv, argc, err_list, smart_mode
+        , context, arg_data, at_least, at_most, examine, get_implicit_value, name);
 }
-template <typename Tmap, typename Tkey, typename Tmid, typename Tval>
-struct MapInserter;
-template <typename Tmap, typename Tkey, typename Tval>
-struct MapInserter<Tmap, Tkey, Tval, Tval> {
-    static void insert(Tmap &value, const std::string &name
-            , Tkey &map_key, Tval &map_value, std::list<std::string> &err_list) {
-        if (value.find(map_key) != value.end()) {
-            err_list.emplace_back("repeated " + name + ".key '" + to_string(map_key) + "'");
-        } else {
-            value.insert(std::make_pair(std::move(map_key), std::move(map_value)));
-        }
-    }
-};
-template <typename Tmap, typename Tkey, typename Tval>
-struct MapInserter<Tmap, Tkey, std::vector<Tval>, Tval> {
-    static void insert(Tmap &value, const std::string &name
-            , Tkey &map_key, std::vector<Tval> &map_value, std::list<std::string> &err_list) {
-        auto &item = value[std::move(map_key)];
-        item.insert(item.end(), map_value.begin(), map_value.end());
-    }
-};
 template <typename Tmap, typename Tkey, typename Ttop>
 ParseResult MapParser<Tmap, Tkey, Ttop>::parse(Tmap &value, char *argv[], int argc
         , std::list<std::string> &err_list, SmartMode smart_mode
@@ -1414,9 +1388,9 @@ ParseResult MapParser<Tmap, Tkey, Ttop>::parse(Tmap &value, char *argv[], int ar
     if (!err_key.empty()) {
         err_list.splice(err_list.end(), err_key);
     }
-    Ttop map_value;
+    auto it = value.insert(std::make_pair(map_key, Ttop()));
     std::list<std::string> err_value;
-    ret = DataParser<Ttop>::parse(map_value, argv + i, ret.is_terminated ? 0 : (argc - i)
+    ret = DataParser<Ttop>::parse(it.first->second, argv + i, ret.is_terminated ? 0 : (argc - i)
         , err_value, smart_mode
         , context, arg_data, at_least, at_most, examine, implicit_value
         , name + "[" + to_string(map_key) + "]");
@@ -1424,10 +1398,6 @@ ParseResult MapParser<Tmap, Tkey, Ttop>::parse(Tmap &value, char *argv[], int ar
     if (!err_value.empty()) {
         err_list.splice(err_list.end(), err_value);
         return ParseResult{i, 0, ret.is_terminated};
-    }
-    if (err_key.empty()) {
-        MapInserter<Tmap, Tkey, Ttop, typename get_cli_value_type<Ttop>::type>::insert(
-            value, name, map_key, map_value, err_list);
     }
     return ParseResult{i, 1, ret.is_terminated};
 }
@@ -1476,7 +1446,7 @@ int ArgDataT<T>::appear(char *argv[], int argc, std::list<std::string> &err_list
     auto ret = DataParser<T>::parse(_data, argv, argc, err_tmp, _smart_mode
         , _arg_attr.get_context(), &_data, dim_1_at_least, dim_1_at_most
         , [this](Tval &value, void *arg_data) { return this->_arg_attr.examine(value, arg_data); }
-        , func_implicit_value
+        , func_implicit_value, _arg_attr.name()
         );
     for (auto &it : err_tmp) {
         err_list.emplace_back(err_header + it);
@@ -1527,9 +1497,6 @@ const char *cliargs_parse_by_format(T &var, char *psz, const std::string &var_na
         std::stringstream ss;
         ss << "format error: '" << (parent ? parent : psz)
            << "', expect a(n) '" << err_type_name << "' value";
-        if (var_name.length()) {
-            ss << " for '" << var_name << "'";
-        }
         err_list.emplace_back(ss.str());
     }
     return err_type_name;
@@ -1682,17 +1649,15 @@ std::string ArgParser::concat_name(const std::string &name) const {
     }
     std::stringstream ss;
     auto it = _name_stack.begin();
-    if (it != _name_stack.end()) {
-        ss << (*it)[0];
-        while (it !=  _name_stack.end()) {
-            auto it_next = it;
-            ++it_next;
-            if (it_next != _name_stack.end()) {
-                ss << (*it)[1] << (*it_next)[0] << (*it)[2];
-                ++it;
-            } else {
-                break;
-            }
+    ss << (*it)[0];
+    while (it !=  _name_stack.end()) {
+        auto it_next = it;
+        ++it_next;
+        if (it_next != _name_stack.end()) {
+            ss << (*it)[1] << (*it_next)[0] << (*it)[2];
+            ++it;
+        } else {
+            break;
         }
     }
     if (!name.empty()) {
@@ -1702,11 +1667,15 @@ std::string ArgParser::concat_name(const std::string &name) const {
 }
 
 template <typename T>
-class ArgAttr : public detail::ArgAttrTval<T> {};
+class ArgAttr : public detail::ArgAttrTval<T> {
+public:
+    template<typename... Ts>
+    ArgAttr(Ts... args) : detail::ArgAttrTval<T>(args...) {}
+};
 
-template <typename T>
-std::shared_ptr<ArgAttr<T>> value() {
-    return std::make_shared<ArgAttr<T>>();
+template <typename T, typename... Ts>
+std::shared_ptr<ArgAttr<T>> value(Ts... args) {
+    return std::make_shared<ArgAttr<T>>(args...);
 }
 
 class ArgDesc {
@@ -1967,7 +1936,7 @@ void Result::print_help(const std::string &indent, std::ostream &os) const {
 template <typename T>
 void Parser::add_arg(char flag, std::string name
         , std::string desc, std::shared_ptr<ArgAttr<T>> attr, std::string alias) {
-    auto err_header = std::string("define[") + to_string(_arg_desc_list.size()) + "]:";
+    auto err_header = std::string("define[") + to_string(_arg_desc_list.size()) + "]: ";
     if (name.empty()) {
         _err_list.emplace_back(err_header + "long name is required");
         return;

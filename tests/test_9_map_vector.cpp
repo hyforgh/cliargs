@@ -37,7 +37,7 @@ TEST_CASE("map_vector") {
         CLI_TEST_DEFINE_NORM_ARG((MapVector), (->line_width(2, 3)), "--arg_name", "key1", "5.12");
         CHECK(result.error());
         CHECK(cli_error_like(result.error_details(),
-            ".*a\\(n\\) 'float32' value is required as 'map\\[\"key1\"\\]\\[1\\]'"));
+            ".*a\\(n\\) 'float32' value is required as 'map.*\\[\"key1\"\\]\\[1\\]'"));
     }
 
     SECTION("line_width-limit-too-many") {
