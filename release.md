@@ -4,9 +4,12 @@
 **摘要：重大 API 重构与行为变更。** 移除了 `data_count(int fixed_count)` 和 `line_width(int fixed_count)` 方法，并更新了 `data_count(int, int)` 与 `line_width(int, int)` 的函数签名。
 
 **破坏性变更 (Breaking Changes)**
-* **API 移除**：彻底移除了 `data_count(int fixed_count)` 和 `line_width(int fixed_count)` 方法。
+* **API 移除**：
+  * 彻底移除了 `data_count(int fixed_count)` 和 `line_width(int fixed_count)` 方法。
+  * 彻底移除了 `cliargs_parse_by_format` 方法。（当前，暂不再支持通过解析单个字符串给结构体赋值，后续将通过更便捷的形式支持）
 * **签名变更**：`data_count(int at_least, int at_most)` 方法已替换为 `data_count(int at_least, int at_most = -1)`。虽然增加了默认值以提供便利，但这改变了函数签名。依赖旧签名的函数指针或严格的模板推导的现有代码将会中断。
 * **签名变更**：`line_width(int at_least, int at_most)` 方法已替换为 `line_width(int at_least, int at_most = -1)`。虽然增加了默认值以提供便利，但这改变了函数签名。依赖旧签名的函数指针或严格的模板推导的现有代码将会中断。
+* **行为变更**：`cliargs::to_string` 具备自行推断自定义结构体转字符串的能力，不再依赖重载输出流 `sstd::ostream & operator << (std::ostream &, const MyStruct &)`  运算符了
 
 **Bug 修复**
 * 修复了整数边界检查失效的问题。

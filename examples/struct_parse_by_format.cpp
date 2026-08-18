@@ -6,61 +6,16 @@ struct MyStruct {
     float gain;
     long size;
 };
-// overload oerator << for printing default-value and enum-value in help
-std::ostream &operator << (std::ostream &os, const MyStruct &obj) {
-    os << "{.name=" << obj.name << ", .gain=" << obj.gain << ", .size=" << obj.size << "}";
-    return os;
-}
 
-const char *cliargs_parse_by_format(MyStruct &obj, char *psz
-        , const std::string &name, std::list<std::string> &err_list
-        , void *context, char *parent) {
-    const char *type_name = "\"string,float[,long]\"";
-    if (!psz || !psz[0]) {
-        return type_name;
+void cliargs_parse_by_parser(MyStruct &obj, cliargs::ArgParser &parser, const std::string &name) {
+    parser.domain_begin(name.empty() ? "MyStruct" : name); // tell ArgParser the struct's name
+    if (parser.assign(obj.name, "name")) { // MyStruct::name required a string value
+        parser.check(!obj.name.empty(), "invalid name: empty");
     }
-    // try to split the string like "data.bin,32,64" or "data.bin,32"
-    std::list<std::string> sub_list;
-    int b = 0;
-    while (psz[b]) {
-        int e = b;
-        while (psz[e] && psz[e] != ',') ++e;
-        sub_list.emplace_back(psz + b, psz + e);
-        if (psz[e] == ',') {
-            b = e + 1;
-        } else {
-            break;
-        }
-    }
-    // asign struct's member
-    auto err_head = std::string("format error: '") + parent + "'"
-        + " as format '" + type_name
-        + "', a value is required for ";
-    auto it = sub_list.begin();
-    if (it == sub_list.end()) {
-        err_list.emplace_back(err_head + "'MyStruct::name'"); // 'MyStruct::name' is required
-    } else {
-        cliargs::cliargs_parse_by_format(obj.name, (char *)it->c_str(), "MyStruct::name"
-            , err_list, context, parent);
-        ++it;
-    }
-    if (it == sub_list.end()) {
-        err_list.emplace_back(err_head + "'MyStruct::gain'"); // 'MyStruct::gain' is required
-    } else {
-        cliargs::cliargs_parse_by_format(obj.gain, (char *)it->c_str(), "MyStruct::gain"
-            , err_list, context, parent);
-        ++it;
-    }
-    if (it == sub_list.end()) {
-        obj.size = 0; // "MyStruct::size" is optional, assign a default value if not specified by user
-    } else {
-        cliargs::cliargs_parse_by_format(obj.size, (char *)it->c_str(), "MyStruct::size"
-            , err_list, context, parent);
-    }
-    if (sub_list.size() < 2) {
-        err_list.emplace_back("'MyStruct' expects 2 ~ 3 values(s) but got " + std::to_string(sub_list.size()));
-    }
-    return type_name;
+    parser.assign(obj.gain, "gain"); // MyStruct::gain required an uint64 value
+    parser.set_optional(); // the followwing member is optional
+    parser.assign(obj.size, "size", (long)0); // specify a default value for optional member
+    parser.domain_end();
 }
 
 int main(int argc, char *argv[]) {

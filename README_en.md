@@ -98,18 +98,9 @@ struct MyStruct {
     float gain;
     long size;
 };
-// Overload operator << for printing the default value in help messages
-std::ostream &operator << (std::ostream &os, const MyStruct &obj) {
-    os << "{.name=" << obj.name << ", .gain=" << obj.gain << ", .size=" << obj.size << "}";
-    return os;
-}
 ```
 
-### 2.2.1 Overloading Parse Functions
-
-You only need to choose one of the following two functions. If both parse functions are present, cliargs_parse_by_parser will be invoked.
-
-#### 2.2.1.1 Overloading cliargs_parse_by_parser
+### 2.2.1 Overloading Parse Functions `cliargs_parse_by_parser`
 
 After overloading this function, program users need to use a string array to assign values to the struct. Full Example
 
@@ -133,34 +124,6 @@ void cliargs_parse_by_parser(MyStruct &obj, cliargs::ArgParser &parser, const st
 > Note: cliargs will automatically deduce the type name of MyStruct:
 > `assert(cliargs::type_traits<MyStruct>::name() == "{string, float[, long]}");`
 > `assert(cliargs::type_traits<std::vector<MyStruct>>::name() == "vector<{string, float[, long]}>");`
-
-#### 2.2.1.2 Overloading cliargs_parse_by_format
-
-After overloading this function, program users need to use a single structured string to assign values to the struct. Full Example
-
-```c++
-const char *cliargs_parse_by_format(MyStruct &obj, char *psz
-        , std::string name, std::list<std::string> &err_list
-        , void *context, char *parent) {
-    const char *type_name = "\"string,float[,long]\"";
-    if (!psz || !psz[0]) {
-        return type_name;
-    }
-    // Try to split the string like "data.bin,32,64" or "data.bin,32"
-    ...
-    // Assign struct members
-    // Push messages into err_list if something is wrong
-    ...
-    return type_name; // Return the type name
-}
-```
-```bash
---my_struct "data.bin,32,64"
---my_struct "data.bin,32"
-```
-> Note: cliargs will automatically deduce the type name of MyStruct:
-> `assert(cliargs::type_traits<MyStruct>::name() == "{\"string,float[,long]\"}");`
-> `assert(cliargs::type_traits<std::vector<MyStruct>>::name() == "vector<{\"string,float[,long]\"}>");`
 
 ### 2.2.2 Combining Structs with STL Containers
 

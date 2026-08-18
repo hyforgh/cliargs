@@ -86,17 +86,8 @@ struct MyStruct {
     float gain;
     long size;
 };
-// overload oerator << for printing default-value in help
-std::ostream &operator << (std::ostream &os, const MyStruct &obj) {
-    os << "{.name=" << obj.name << ", .gain=" << obj.gain << ", .size=" << obj.size << "}";
-    return os;
-}
 ```
-### 2.2.1 重载解析函数
-
-以下函数二选一即可，如果两个解析函数都存在，则 `cliargs_parse_by_parser` 将被调用。
-
-#### 2.2.1.1 重载 `cliargs_parse_by_parser`
+### 2.2.1 重载解析函数 `cliargs_parse_by_parser`
 重载此函数后，程序用户需要使用**字符串数组**给结构体赋值。[完整示例](examples/my_struct_parse_by_parser.cpp)
 ```c++
 void cliargs_parse_by_parser(MyStruct &obj, cliargs::ArgParser &parser, const std::string &name) {
@@ -118,32 +109,6 @@ void cliargs_parse_by_parser(MyStruct &obj, cliargs::ArgParser &parser, const st
 > 说明：`cliargs` 将自动推导 `MyStruct` 的类型名称：
 > `assert(cliargs::type_traits<MyStruct>::name() == "{string, float[, long]}");`
 > `assert(cliargs::type_traits<std::vector<MyStruct>>::name() == "vector<{string, float[, long]}>");`
-
-#### 2.2.1.2 重载 `cliargs_parse_by_format`
-重载此函数后，程序用户需要使用**单个结构化的字符串**给结构体赋值。[完整示例](examples/my_struct_parse_by_format.cpp)
-```c++
-const char *cliargs_parse_by_format(MyStruct &obj, char *psz
-        , std::string name, std::list<std::string> &err_list
-        , void *context, char *parent) {
-    const char *type_name = "\"string,float[,long]\"";
-    if (!psz || !psz[0]) {
-        return type_name;
-    }
-    // try to split the string like "data.bin,32,64" or "data.bin,32"
-    ...
-    // asign struct's member
-    // push messages into err_list if something is bad
-    ...
-    return type_name; // return the type name
-}
-```
-```bash
---my_struct "data.bin,32,64"
---my_struct "data.bin,32"
-```
-> 说明：`cliargs` 将自动推导 `MyStruct` 的类型名称
-assert(cliargs::type_traits<MyStruct>::name() == "{\"string,float[,long]\"}");
-assert(cliargs::type_traits<std::vector<MyStruct>>::name() == "vector<{\"string,float[,long]\"}>");
 
 ### 2.2.2 结构体与 STL 容器结合
 |layout|c++ type|__parse_by|usage|

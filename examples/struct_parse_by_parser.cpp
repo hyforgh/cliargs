@@ -6,11 +6,6 @@ struct MyStruct {
     float gain;
     long size;
 };
-// overload oerator << for printing default-value and enum-value in help
-std::ostream &operator << (std::ostream &os, const MyStruct &obj) {
-    os << "{.name=" << obj.name << ", .gain=" << obj.gain << ", .size=" << obj.size << "}";
-    return os;
-}
 
 void cliargs_parse_by_parser(MyStruct &obj, cliargs::ArgParser &parser, const std::string &name) {
     parser.domain_begin(name.empty() ? "MyStruct" : name); // tell ArgParser the struct's name
