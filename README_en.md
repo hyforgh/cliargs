@@ -372,7 +372,6 @@ parser.add_args()
 
 * If you declare your data type as a pointer type (char * or const char *), combine pointer types with STL containers, or embed pointers within a tuple, the pointer will directly point to the string passed by the program user to the main function.
 * If a pointer type is embedded within a struct and assigned using cliargs_parse_by_parser, the pointer will point to the string passed by the program user to the main function.
-* If a pointer type is embedded within a struct and assigned using cliargs_parse_by_format, the developer must ensure the validity of the pointer.
 
 ## 4.3 About GNU Mode
 

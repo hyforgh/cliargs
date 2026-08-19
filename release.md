@@ -1,7 +1,7 @@
 # 更新日志 (Release Notes)
 
 ## 3.0.0
-**摘要：重大 API 重构与行为变更。** 移除了 `data_count(int fixed_count)` 和 `line_width(int fixed_count)` 方法，并更新了 `data_count(int, int)` 与 `line_width(int, int)` 的函数签名。
+**摘要：重大 API 重构与行为变更。** 移除了 `data_count(int fixed_count)`、 `line_width(int fixed_count)`、`cliargs_parse_by_format` 等方法，并更新了 `data_count(int, int)` 与 `line_width(int, int)` 的函数签名。
 
 **破坏性变更 (Breaking Changes)**
 * **API 移除**：

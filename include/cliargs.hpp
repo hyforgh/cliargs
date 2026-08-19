@@ -180,7 +180,11 @@ struct type_traits<std::vector<T>> {
 };
 template <typename Tkey, typename Tval>
 struct type_traits<std::pair<Tkey, Tval>> {
-    static const std::string &name();
+    static const std::string &name() {
+        static const std::string s_name = std::string("pair<")
+            + type_traits<Tkey>::name() + ", " + type_traits<Tval>::name() + ">";
+        return s_name;
+    }
 };
 template <typename Tkey, typename Tval>
 struct type_traits<std::map<Tkey, Tval>> {
@@ -235,13 +239,13 @@ inline const char *parse_primary(bool &v, char *psz) {
     if (!psz || !psz[0]) {
         return type_name;
     }
-    if ((*psz == 'T' || *psz == 't') && (strncmp(psz + 1, "rue\0", 4) == 0)) {
+    if ((*psz == 'T' || *psz == 't') && (strcmp(psz + 1, "rue") == 0)) {
         v = true;
-    } else if (strncmp(psz, "1\0", 2) == 0) {
+    } else if (strcmp(psz, "1") == 0) {
         v = true;
-    } else if ((*psz == 'F' || *psz == 'f') && (strncmp(psz + 1, "alse\0", 5) == 0)) {
+    } else if ((*psz == 'F' || *psz == 'f') && (strcmp(psz + 1, "alse") == 0)) {
         v = false;
-    } else if (strncmp(psz, "0\0", 2) == 0) {
+    } else if (strcmp(psz, "0") == 0) {
         v = false;
     } else {
         return type_name;
@@ -274,9 +278,9 @@ const char *parse_integer(Tval &v, char *psz, Tbig (*str2int)(const char *, char
     }
     Tbig v_big = 0;
     char *pend = nullptr;
-    if (strncmp(psz, "0x", 2) == 0 || strncmp(psz, "0X", 2) == 0) {
+    if (strcmp(psz, "0x") == 0 || strcmp(psz, "0X") == 0) {
         v_big = str2int(psz, &pend, 16);
-    } else if (strncmp(psz, "0b", 2) == 0 || strncmp(psz, "0B", 2) == 0) {
+    } else if (strcmp(psz, "0b") == 0 || strcmp(psz, "0B") == 0) {
         v_big = str2int(psz + 2, &pend, 2);
     } else {
         v_big = str2int(psz, &pend, 10);
@@ -331,7 +335,7 @@ inline const char *parse_primary(char &v, char *psz) {
     return parse_integer(v, psz, std::strtol);
 }
 
-inline bool is_digital(const char *p) {
+inline bool is_numeric(const char *p) {
     double v;
     return parse_primary(v, const_cast<char *>(p)) == nullptr;
 }
@@ -806,13 +810,13 @@ public:
     }
 
     std::shared_ptr<ArgAttr<T>> examine(std::function<bool (Tval &)> func, std::string desc = "") {
-        _match_examine_func = [&func](Tval &v, void *, void *) { return func(v); };
+        _match_examine_func = [func = std::move(func)](Tval &v, void *, void *) { return func(v); };
         _match_examine_desc = std::move(desc);
         return std::static_pointer_cast<ArgAttr<T>>(shared_from_this());
     }
     std::shared_ptr<ArgAttr<T>> examine(
             std::function<bool (Tval &, void *context)> func, std::string desc = "") {
-        _match_examine_func = [&func](Tval &v, void *context, void *) { return func(v, context); };
+        _match_examine_func = [func = std::move(func)](Tval &v, void *context, void *) { return func(v, context); };
         _match_examine_desc = std::move(desc);
         return std::static_pointer_cast<ArgAttr<T>>(shared_from_this());
     }
@@ -1152,13 +1156,10 @@ private:
 template <typename Tval>
 struct get_capacity {
     static int at_most(SmartMode smart_mode) {
-        static auto s_at_most = [](SmartMode smart_mode) -> int {
-            ArgParserImpl parser(nullptr, 0, smart_mode, nullptr);
-            Tval arg_value;
-            cliargs_parse_by_parser(arg_value, parser, "");
-            return parser.at_most();
-        }(smart_mode);
-        return s_at_most;
+        ArgParserImpl parser(nullptr, 0, smart_mode, nullptr);
+        Tval arg_value;
+        cliargs_parse_by_parser(arg_value, parser, "");
+        return parser.at_most();
     }
 };
 
@@ -1599,7 +1600,7 @@ bool ArgParser::assign(T &value, const std::string &name, T default_value) {
     }
     if (!_is_terminated && psz != nullptr && _at_most <= _argc                                              \
             && (psz[0] != '-'                                                         /*normal string*/     \
-                || detail::is_digital(psz + 1)                                        /*negative numberic*/ \
+                || detail::is_numeric(psz + 1)                                        /*negative numberic*/ \
                 || (_smart_mode == SmartMode::Gnu && detail::is_cli_string<T>::value) /*force assigning*/   \
                 || (_smart_mode == SmartMode::Eof && (psz[1] != '-' || psz[2]))       /*stop at end: '--'*/ \
             )) {
@@ -2167,7 +2168,7 @@ Result Parser::parse(int argc, char *argv[], unsigned start_index) {
         char *binded_data[1] = {nullptr};
         if (arg_data && arg_data->eat_anything()) {
             // do nothing
-        } else if (p[0] == '-' && !detail::is_digital(p + 1)) {
+        } else if (p[0] == '-' && !detail::is_numeric(p + 1)) {
             if (p[1] == '-') {
                 if (p[2]) {
                     arg_name = p;
@@ -2229,31 +2230,30 @@ Result Parser::parse(int argc, char *argv[], unsigned start_index) {
                 }
                 ++i;
             }
-            if (after_eof && desc->attr()->smart_mode() != SmartMode::Eof) {
+            if (after_eof && (!desc || desc->attr()->smart_mode() != SmartMode::Eof)) {
                 --i;
                 result.set_tail(argc - i, argv + i);
                 break;
             }
-        } else {
-            if (after_eof) {
-                result.set_tail(argc - i, argv + i);
-                break;
-            }
-            if (!desc) {
-                std::stringstream ss;
-                ss << "usage: arg['" << arg_name << "']";
-                if (arg_data) {
-                    ss << " " << arg_data->appear_count() << "th";
-                }
-                ss << ": too many value '" << p << "'";
-                result.add_error(std::move(ss.str()));
-                ++i;
-                continue;
-            }
+        } else if (after_eof) {
+            result.set_tail(argc - i, argv + i);
+            break;
         }
         after_eof = false;
 
-        if (desc && desc->attr()->is_positional()) {
+        if (!desc) {
+            std::stringstream ss;
+            ss << "usage: arg['" << arg_name << "']";
+            if (arg_data) {
+                ss << " " << arg_data->appear_count() << "th";
+            }
+            ss << ": too many value '" << p << "'";
+            result.add_error(std::move(ss.str()));
+            ++i;
+            continue;
+        }
+
+        if (desc->attr()->is_positional()) {
             size_t k = 0;
             while (k < pos_arg_vec.size() && desc != pos_arg_vec[k]) ++k;
             if (k < pos_arg_vec.size()) {

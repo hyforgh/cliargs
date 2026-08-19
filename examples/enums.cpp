@@ -8,11 +8,6 @@ struct MyStruct {
     uint64_t offset;
     uint64_t size;
 };
-// overload oerator << for printing default-value and enum-value in help
-std::ostream &operator << (std::ostream &os, const MyStruct &obj) {
-    os << "{.name=\"" << obj.name << "\", .offset=" << obj.offset << ", .size=" << obj.size << "}";
-    return os;
-}
 
 void cliargs_parse_by_parser(MyStruct &obj, cliargs::ArgParser &parser, const std::string &name = "MyStruct") {
     parser.domain_begin(name);

@@ -5,10 +5,6 @@ struct MyStruct {
     float gain;
     int flag;
 };
-std::ostream &operator << (std::ostream &os, const MyStruct &obj) {
-    os << "{.name=\"" << obj.name << "\", .gain=" << obj.gain << ", .flag=" << obj.flag << "}";
-    return os;
-}
 void cliargs_parse_by_parser(MyStruct &obj, cliargs::ArgParser &parser, const std::string &name) {
     parser.domain_begin(name.empty() ? "MyStruct" : name);
     if (parser.assign(obj.name, "name")) {
