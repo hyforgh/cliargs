@@ -105,9 +105,7 @@ protected:
 }; // ArgParser
 
 template <typename T>
-void cliargs_parse_by_parser(T &var, ArgParser &parser, const std::string &name = "") {
-    parser.assign(var, name);
-}
+void cliargs_parse_by_parser(T &var, ArgParser &parser, const std::string &name = "");
 
 template <typename T>
 std::string to_string(const T &data
@@ -235,17 +233,25 @@ inline const char *parse_primary(std::string &v, char *psz) {
     return nullptr;
 }
 inline const char *parse_primary(bool &v, char *psz) {
-    static const char *type_name = "bool{True,true,1,False,false,0}";
+    static const char *type_name = "bool{True,true,1,Yes,yes,Y,y,False,false,0,No,no,N,n}";
     if (!psz || !psz[0]) {
         return type_name;
     }
-    if ((*psz == 'T' || *psz == 't') && (strcmp(psz + 1, "rue") == 0)) {
+    if ((*psz == 'T' || *psz == 't') && (strncmp(psz + 1, "rue\0", 4) == 0)) {
         v = true;
-    } else if (strcmp(psz, "1") == 0) {
+    } else if (strncmp(psz, "1\0", 2) == 0) {
         v = true;
-    } else if ((*psz == 'F' || *psz == 'f') && (strcmp(psz + 1, "alse") == 0)) {
+    } else if ((*psz == 'Y' || *psz == 'y') && (strncmp(psz + 1, "es\0", 3) == 0)) {
+        v = true;
+    } else if ((*psz == 'Y' || *psz == 'y') && !psz[1]) {
+        v = true;
+    } else if ((*psz == 'F' || *psz == 'f') && (strncmp(psz + 1, "alse\0", 5) == 0)) {
         v = false;
-    } else if (strcmp(psz, "0") == 0) {
+    } else if (strncmp(psz, "0\0", 2) == 0) {
+        v = false;
+    } else if ((*psz == 'N' || *psz == 'n') && (strncmp(psz + 1, "o\0", 2) == 0)) {
+        v = false;
+    } else if ((*psz == 'N' || *psz == 'n') && !psz[1]) {
         v = false;
     } else {
         return type_name;
@@ -278,9 +284,9 @@ const char *parse_integer(Tval &v, char *psz, Tbig (*str2int)(const char *, char
     }
     Tbig v_big = 0;
     char *pend = nullptr;
-    if (strcmp(psz, "0x") == 0 || strcmp(psz, "0X") == 0) {
+    if (strncmp(psz, "0x", 2) == 0 || strncmp(psz, "0X", 2) == 0) {
         v_big = str2int(psz, &pend, 16);
-    } else if (strcmp(psz, "0b") == 0 || strcmp(psz, "0B") == 0) {
+    } else if (strncmp(psz, "0b", 2) == 0 || strncmp(psz, "0B", 2) == 0) {
         v_big = str2int(psz + 2, &pend, 2);
     } else {
         v_big = str2int(psz, &pend, 10);
@@ -630,7 +636,7 @@ struct ParseRet {
 class ArgParserImpl : public ArgParser {
 public:
     ArgParserImpl(char *argv[], int argc, SmartMode smart_mode, void *context)
-            : ArgParser(argv, argc, smart_mode, context) {
+            : ArgParser(argv, argc, smart_mode, context), _is_unknown_type(false) {
     }
     std::list<std::string> &errors() {
         return _err_list;
@@ -645,6 +651,9 @@ public:
         return _at_most;
     }
     std::string type_name() const {
+        if (_is_unknown_type) {
+            return "";
+        }
         std::stringstream ss;
         ss << "{";
         int i = 0;
@@ -673,6 +682,11 @@ public:
         _is_serializing = false;
         return _ostream.str();
     }
+    void set_as_unknown_type () {
+        _is_unknown_type = true;
+    }
+private:
+    bool _is_unknown_type;
 }; // ArgParserImpl
 
 template <typename Tval>
@@ -810,13 +824,13 @@ public:
     }
 
     std::shared_ptr<ArgAttr<T>> examine(std::function<bool (Tval &)> func, std::string desc = "") {
-        _match_examine_func = [func = std::move(func)](Tval &v, void *, void *) { return func(v); };
+        _match_examine_func = [func](Tval &v, void *, void *) { return func(v); };
         _match_examine_desc = std::move(desc);
         return std::static_pointer_cast<ArgAttr<T>>(shared_from_this());
     }
     std::shared_ptr<ArgAttr<T>> examine(
             std::function<bool (Tval &, void *context)> func, std::string desc = "") {
-        _match_examine_func = [func = std::move(func)](Tval &v, void *context, void *) { return func(v, context); };
+        _match_examine_func = [func](Tval &v, void *context, void *) { return func(v, context); };
         _match_examine_desc = std::move(desc);
         return std::static_pointer_cast<ArgAttr<T>>(shared_from_this());
     }
@@ -1190,7 +1204,7 @@ struct DataParser {
         if ((ret.vali || get_implicit_value) && examine) {
             auto err_detail = examine(value, arg_data);
             if (!err_detail.empty()) {
-                static auto item_at_most = get_capacity<Tval>::at_most(smart_mode);
+                auto item_at_most = get_capacity<Tval>::at_most(smart_mode);
                 std::stringstream ss;
                 ss << "invalid value";
                 if (item_at_most > 1) {
@@ -1347,7 +1361,7 @@ struct VectorParser<Tval, true> {
             , std::function<const typename get_implicit_value_type<Ttop>::type &()> get_implicit_value
             , const std::string &name
             ) {
-        static auto item_at_most = get_capacity<Tval>::at_most(smart_mode);
+        auto item_at_most = get_capacity<Tval>::at_most(smart_mode);
         int i = 0;
         unsigned n = 0;
         bool is_terminated = false;
@@ -1515,6 +1529,15 @@ std::string ArgDataT<T>::finish() {
 }
 
 } // detail
+
+template <typename T>
+void cliargs_parse_by_parser(T &var, ArgParser &parser, const std::string &name) {
+    if (detail::is_cli_custom<T>::value) {
+        static_cast<detail::ArgParserImpl &>(parser).set_as_unknown_type();
+        return;
+    }
+    parser.assign(var, name);
+}
 
 template <typename T>
 std::string to_string(const T &data
@@ -1938,14 +1961,20 @@ void Result::print_help(const std::string &indent, std::ostream &os) const {
 template <typename T>
 void Parser::add_arg(char flag, std::string name
         , std::string desc, std::shared_ptr<ArgAttr<T>> attr, std::string alias) {
-    auto err_header = std::string("define[") + to_string(_arg_desc_list.size()) + "]: ";
+    auto def_index = to_string(_arg_desc_list.size());
+    auto err_header = std::string("define[") + def_index + "]: ";
+    bool is_ok = true;
+    if (type_traits<T>::name().empty()) {
+        _err_list.emplace_back(err_header + "no suitable 'cliargs_parse_by_parser' function found for the custom data type.");
+        is_ok = false;
+    }
     if (name.empty()) {
         _err_list.emplace_back(err_header + "long name is required");
-        return;
+        is_ok = false;
     }
     if (name == "-" || name == "--" || name.find(' ') != name.npos) {
         _err_list.emplace_back(err_header + "invalid long name '" + name + "'");
-        return;
+        is_ok = false;
     }
     if (name[0] != '-') {
         name = "--" + name;
@@ -1954,35 +1983,42 @@ void Parser::add_arg(char flag, std::string name
     }
     if (_arg_desc_dict.find(name) != _arg_desc_dict.end()) {
         _err_list.emplace_back(err_header + "invalid long name '" + name + "', conflict");
-        return;
+        is_ok = false;
     }
     if (flag == '-') {
         _err_list.emplace_back(err_header + "invalid short name '" + flag + "'");
-        return;
+        is_ok = false;
     }
     auto sname = std::string("-") + flag;
     if (flag && _arg_desc_dict.find(sname) != _arg_desc_dict.end()) {
         _err_list.emplace_back(err_header + "short name '" + flag + "', conflict");
-        return;
+        is_ok = false;
     }
     if (alias == "-" || alias == "--") {
         _err_list.emplace_back(err_header + "invalid alias '" + alias + "'");
-        return;
+        is_ok = false;
     }
+    std::string err_alias;
     if (!alias.empty()) {
         if (alias[0] != '-') {
             alias = "--" + alias;
         } else if (alias[1] != '-') {
             alias = "-" + alias;
         }
+        err_alias = alias;
         if (alias == name) {
             alias.clear();
         } else if (_arg_desc_dict.find(alias) != _arg_desc_dict.end()) {
             _err_list.emplace_back(err_header + "invalid alias '" + alias + "', conflict");
-            return;
+            err_alias = "<error-" + def_index + ">" + alias;
+            is_ok = false;
         }
     }
-    _arg_desc_list.emplace_back(flag, name, desc, attr, alias);
+    std::string err_name = name;
+    if (!is_ok) {
+        err_name = "<error-" + def_index + ">" + name;
+    }
+    _arg_desc_list.emplace_back(flag, err_name, desc, attr, err_alias);
     ArgDesc &arg_desc = *_arg_desc_list.rbegin();
     if (flag) {
         _arg_desc_dict[sname] = &arg_desc;

@@ -42,7 +42,19 @@ TEST_CASE("bool") {
     }
 
     SECTION("scatter-explict-value") {
-        TEST_BOOL("test_bool_scatter", "-h=true", "-n=1", "-r=False");
+        TEST_BOOL("test_bool_scatter", "-h=true", "-n=1", "-r=false");
+    }
+
+    SECTION("scatter-explict-value") {
+        TEST_BOOL("test_bool_scatter", "-h=True", "-n=1", "-r=False");
+    }
+
+    SECTION("scatter-explict-value") {
+        TEST_BOOL("test_bool_scatter", "-h=yes", "-n=y", "-r=no");
+    }
+
+    SECTION("scatter-explict-value") {
+        TEST_BOOL("test_bool_scatter", "-h=Yes", "-n=Y", "-r=No");
     }
 
     SECTION("gather") {
@@ -50,7 +62,11 @@ TEST_CASE("bool") {
     }
 
     SECTION("gather-explicit-value") {
-        TEST_BOOL("test_bool_gather", "-hnr=false");
+        TEST_BOOL("test_bool_gather", "-hnr=0");
+    }
+
+    SECTION("gather-explicit-value") {
+        TEST_BOOL("test_bool_gather", "-hnr=n");
     }
 
     #undef TEST_BOOL

@@ -26,6 +26,18 @@ TEST_CASE("scalar_numeric") {
         CHECK(arg_value.as<int>() == -5);
     }
 
+    SECTION("simple-hex") {
+        CLI_TEST_DEFINE_NORM_ARG((int), (), "--arg_name", "0xc1");
+        CHECK(arg_value.valid());
+        CHECK(arg_value.as<int>() == 193);
+    }
+
+    SECTION("simple-bin") {
+        CLI_TEST_DEFINE_NORM_ARG((int), (), "--arg_name", "0B101");
+        CHECK(arg_value.valid());
+        CHECK(arg_value.as<int>() == 5);
+    }
+
     SECTION("default-used") {
         CLI_TEST_DEFINE_NORM_ARG((int), (->default_value(1)));
         CHECK(arg_value.valid());

@@ -65,6 +65,7 @@ int main(int argc, char *argv[]) {
         return result.error() ? -1 : 0;
     }
     // Use result
+    std::cout << "type name: " << cliargs::type_traits<MyStruct>::name() << std::endl;
     std::cout << "my_struct: " << cliargs::to_string(result["my_struct"].as<MyStruct>()) << std::endl;
     std::vector<MyStruct> load = result["vector"].as<std::vector<MyStruct>>();
     std::cout << "vector: " << cliargs::to_string(load) << std::endl;
