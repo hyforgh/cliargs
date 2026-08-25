@@ -669,7 +669,7 @@ public:
         int i = 0;
         for (auto &it : _item_traits) {
             if (with_item_type && !value) {
-                if (i >= _at_least && _is_optional) {
+                if (i == _at_least && _is_optional) {
                     ss << " [";
                 }
             }
@@ -685,12 +685,8 @@ public:
             }
             ++i;
         }
-        if (with_item_type && !value) {
-            for (i = 0; i < static_cast<int>(_item_traits.size()); ++i) {
-                if (i >= _at_least && _is_optional) {
-                    ss << "]";
-                }
-            }
+        if (_at_least < _at_most && _is_optional) {
+            ss << "]";
         }
         ss << "}";
         return ss.str();
@@ -735,7 +731,9 @@ private:
     virtual bool has_implicit_value() const = 0;
     virtual bool has_constraint() const = 0;
     virtual std::string get_constraint_desc() const = 0;
-    virtual std::string get_data_desc() const = 0;
+    virtual std::string get_data_type_desc() const = 0;
+    virtual std::string get_default_value_desc() const = 0;
+    virtual std::string get_implicit_value_desc() const = 0;
     virtual bool is_hidden() const = 0;
     virtual bool is_concise_help() const = 0;
     virtual SmartMode smart_mode() const = 0;
@@ -939,12 +937,12 @@ protected:
         }
         return desc;
     }
-    std::string get_data_desc() const override {
+    std::string get_data_type_desc() const override {
         if (hide_data_desc()) {
             return "";
         }
         std::stringstream ss;
-        ss << "data type: '" << type_traits<T>::name() << "'";
+        ss << type_traits<T>::name();
         auto print_range = [&ss](unsigned at_least, unsigned at_most) {
             ss << "[" << at_least << "~";
             if (at_most == INT32_MAX) {
@@ -970,13 +968,19 @@ protected:
                 }
             }
         }
-        if (has_default_value()) {
-            ss << ";\n  default: " << to_string(get_default_value());
-        }
-        if (has_implicit_value()) {
-            ss << ";\n implicit: " << to_string(get_implicit_value());
-        }
         return ss.str();
+    }
+    std::string get_default_value_desc() const override {
+        if (hide_data_desc() || !has_default_value()) {
+            return "";
+        }
+        return to_string(get_default_value());
+    }
+    std::string get_implicit_value_desc() const override {
+        if (hide_data_desc() || !has_implicit_value()) {
+            return "";
+        }
+        return to_string(get_implicit_value());
     }
     void *get_context() const {
         return _context;
@@ -2110,12 +2114,28 @@ void Parser::print_help(const Result *result
         }
         os << "\n";
         if (!is_concise_help) {
-            auto data_desc = attr->get_data_desc();
-            if (!data_desc.empty()) {
+            auto data_type = attr->get_data_type_desc();
+            if (!data_type.empty()) {
                 os << indent  << _help_indent
                     << std::setw(name_width) << ""
-                        << std::setw(flag_width) << std::right << "value: ";
-                print_desc(data_desc, is_concise_help);
+                        << std::setw(flag_width) << std::right << "data type: ";
+                print_desc(data_type, is_concise_help);
+                os << "\n";
+            }
+            auto default_value = attr->get_default_value_desc();
+            if (!default_value.empty()) {
+                os << indent  << _help_indent
+                    << std::setw(name_width) << ""
+                        << std::setw(flag_width) << std::right << "default: ";
+                print_desc(default_value, is_concise_help);
+                os << "\n";
+            }
+            auto implicit_value = attr->get_implicit_value_desc();
+            if (!implicit_value.empty()) {
+                os << indent  << _help_indent
+                    << std::setw(name_width) << ""
+                        << std::setw(flag_width) << std::right << "implicit: ";
+                print_desc(implicit_value, is_concise_help);
                 os << "\n";
             }
             if (attr->has_constraint()) {
