@@ -5,16 +5,18 @@ struct MyStruct {
     std::string name;
     float gain;
     long size;
+    long offset;
 };
 
-void cliargs_parse_by_parser(MyStruct &obj, cliargs::ArgParser &parser, const std::string &name) {
-    parser.domain_begin(name.empty() ? "MyStruct" : name); // tell ArgParser the struct's name
+void cliargs_parse_custom(MyStruct &obj, cliargs::ArgParser &parser) {
+    parser.domain_begin("MyStruct"); // tell ArgParser the struct's name
     if (parser.assign(obj.name, "name")) { // MyStruct::name required a string value
         parser.check(!obj.name.empty(), "invalid name: empty");
     }
     parser.assign(obj.gain, "gain"); // MyStruct::gain required an uint64 value
     parser.set_optional(); // the followwing member is optional
     parser.assign(obj.size, "size", (long)0); // specify a default value for optional member
+    parser.assign(obj.offset, "offset", (long)0);
     parser.domain_end();
 }
 
@@ -50,6 +52,7 @@ int main(int argc, char *argv[]) {
         ("tail", "usage `--tail file_name [gain [size]]`",
             cliargs::value<MyStruct>()
             ->implicit_value(MyStruct {.name = "data"})
+            ->default_value(MyStruct{.name = ""})
             )
         ("enum", "usage `--enum file_name [gain [size]]`",
             cliargs::value<MyStruct>()->examine([](MyStruct &obj) -> bool {

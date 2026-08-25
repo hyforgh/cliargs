@@ -87,11 +87,11 @@ struct MyStruct {
     long size;
 };
 ```
-### 2.2.1 重载解析函数 `cliargs_parse_by_parser`
-重载此函数后，程序用户需要使用**字符串数组**给结构体赋值。[完整示例](examples/my_struct_parse_by_parser.cpp)
+### 2.2.1 重载解析函数 `cliargs_parse_custom`
+重载此函数后，程序用户需要使用**字符串数组**给结构体赋值。[完整示例](examples/custom.cpp)
 ```c++
-void cliargs_parse_by_parser(MyStruct &obj, cliargs::ArgParser &parser, const std::string &name) {
-    parser.domain_begin(name.empty() ? "MyStruct" : name); // tell ArgParser the struct's name
+void cliargs_parse_custom(MyStruct &obj, cliargs::ArgParser &parser) {
+    parser.domain_begin("MyStruct"); // tell ArgParser the struct's name
     if (parser.assign(obj.name, "name")) { // MyStruct::name required a string value
         parser.check(!obj.name.empty(), "invalid name: empty");
     }
@@ -320,7 +320,7 @@ parser.add_args()
     ("const_ptr", "const char *", cliargs::AsArgs<const char *>());
 ```
 * 如果将自己的数据类型声明为指针类型（`char *` 或 `const char *`）、或将指针类型与 STL 容器结合、或将指针嵌入到 `tuple` 中，则指针将直接指向程序用户传递给 `main` 函数的字符串
-* 如果将指针类型嵌入到结构体中，且采用 `cliargs_parse_by_parser` 为结构体成员赋值，则指针类型将指向程序用户传递给 `main` 函数的字符串
+* 如果将指针类型嵌入到结构体中，且采用 `cliargs_parse_custom` 为结构体成员赋值，则指针类型将指向程序用户传递给 `main` 函数的字符串
 
 ## 4.3 关于 GNU 模式
 默认模式下：

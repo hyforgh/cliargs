@@ -74,7 +74,7 @@ enum class SmartMode {
 
 class ArgParser {
 public:
-    ArgParser(char *argv[], int argc, SmartMode smart_mode, void *context);
+    ArgParser(char *argv[], int argc, SmartMode smart_mode, void *context, std::string parent_name="");
     virtual ~ArgParser() {}
     virtual void domain_begin(std::string type_name, std::string member_prefix = "."
         , std::string member_suffix = "");
@@ -91,6 +91,7 @@ protected:
     char **_argv;
     SmartMode _smart_mode;
     void *_context;
+    std::string _parent_name;
     int _argi;
     int _vali;
     bool _is_optional;
@@ -99,13 +100,21 @@ protected:
     bool _is_terminated;
     bool _is_serializing;
     std::list<std::string> _err_list;
-    std::stringstream _ostream;
-    std::list<std::array<std::string, 3>> _name_stack;
-    std::list<std::pair<std::string, std::string>> _item_traits;
+    struct {
+        std::string type_name;
+        std::string item_name_prefix;
+        std::string item_name_suffix;
+    } _name_traits;
+    struct ItemTraits {
+        std::string type_name;
+        std::string item_name;
+        std::string item_value;
+    };
+    std::list<ItemTraits> _item_traits;
 }; // ArgParser
 
 template <typename T>
-void cliargs_parse_by_parser(T &var, ArgParser &parser, const std::string &name = "");
+void cliargs_parse_custom(T &var, ArgParser &parser);
 
 template <typename T>
 std::string to_string(const T &data
@@ -237,21 +246,14 @@ inline const char *parse_primary(bool &v, char *psz) {
     if (!psz || !psz[0]) {
         return type_name;
     }
-    if ((*psz == 'T' || *psz == 't') && (strncmp(psz + 1, "rue\0", 4) == 0)) {
+    if (strcmp(psz, "True") == 0 || strcmp(psz, "true") == 0 || strcmp(psz, "1") == 0
+            || strcmp(psz, "Yes") == 0 || strcmp(psz, "yes") == 0
+            || strcmp(psz, "Y") == 0  || strcmp(psz, "y") == 0
+            ) {
         v = true;
-    } else if (strncmp(psz, "1\0", 2) == 0) {
-        v = true;
-    } else if ((*psz == 'Y' || *psz == 'y') && (strncmp(psz + 1, "es\0", 3) == 0)) {
-        v = true;
-    } else if ((*psz == 'Y' || *psz == 'y') && !psz[1]) {
-        v = true;
-    } else if ((*psz == 'F' || *psz == 'f') && (strncmp(psz + 1, "alse\0", 5) == 0)) {
-        v = false;
-    } else if (strncmp(psz, "0\0", 2) == 0) {
-        v = false;
-    } else if ((*psz == 'N' || *psz == 'n') && (strncmp(psz + 1, "o\0", 2) == 0)) {
-        v = false;
-    } else if ((*psz == 'N' || *psz == 'n') && !psz[1]) {
+    } else if (strcmp(psz, "False") == 0 || strcmp(psz, "false") == 0 || strcmp(psz, "0") == 0
+            || strcmp(psz, "No") == 0 || strcmp(psz, "no") == 0
+            || strcmp(psz, "N") == 0 || strcmp(psz, "n") == 0) {
         v = false;
     } else {
         return type_name;
@@ -635,8 +637,8 @@ struct ParseRet {
 
 class ArgParserImpl : public ArgParser {
 public:
-    ArgParserImpl(char *argv[], int argc, SmartMode smart_mode, void *context)
-            : ArgParser(argv, argc, smart_mode, context), _is_unknown_type(false) {
+    ArgParserImpl(char *argv[], int argc, SmartMode smart_mode, void *context, std::string parent_name = "")
+            : ArgParser(argv, argc, smart_mode, context, std::move(parent_name)), _is_unknown_type(false) {
     }
     std::list<std::string> &errors() {
         return _err_list;
@@ -650,37 +652,48 @@ public:
     int at_most() const {
         return _at_most;
     }
-    std::string type_name() const {
+    template <typename T>
+    std::string to_string(bool with_item_type = true, const T *value = nullptr) {
         if (_is_unknown_type) {
             return "";
         }
         std::stringstream ss;
+        if (value) {
+            _is_serializing = true;
+            cliargs_parse_custom(const_cast<T &>(*value), *this);
+            _is_serializing = false;
+        } else {
+            ss << _name_traits.type_name;
+        }
         ss << "{";
         int i = 0;
         for (auto &it : _item_traits) {
-            if (i >= _at_least && _is_optional) {
-                ss << " [";
+            if (with_item_type && !value) {
+                if (i >= _at_least && _is_optional) {
+                    ss << " [";
+                }
             }
             if (i) {
                 ss << ", ";
             }
-            ss << "." << it.second << ":" << it.first;
+            ss << "." << it.item_name;
+            if (with_item_type) {
+                ss << ":" << it.type_name;
+            }
+            if (value) {
+                ss << "=" << it.item_value;
+            }
             ++i;
         }
-        for (i = 0; i < (int)_item_traits.size(); ++i) {
-            if (i >= _at_least && _is_optional) {
-                ss << "]";
+        if (with_item_type && !value) {
+            for (i = 0; i < static_cast<int>(_item_traits.size()); ++i) {
+                if (i >= _at_least && _is_optional) {
+                    ss << "]";
+                }
             }
         }
         ss << "}";
         return ss.str();
-    }
-    template <typename T>
-    std::string serialize(const T &value) {
-        _is_serializing = true;
-        cliargs_parse_by_parser(const_cast<T &>(value), *this, "");
-        _is_serializing = false;
-        return _ostream.str();
     }
     void set_as_unknown_type () {
         _is_unknown_type = true;
@@ -695,7 +708,7 @@ struct to_string_t<Tval, typename std::enable_if<is_cli_custom<Tval>::value>::ty
             , const std::string &delimiter, const std::string &gap
             , const char *prefix, const char *suffix) {
         ArgParserImpl parser(nullptr, 0, SmartMode::Gnu, nullptr);
-        return parser.serialize(value);
+        return parser.to_string(false, &value);
     }
 };
 
@@ -878,7 +891,7 @@ public:
         return std::static_pointer_cast<ArgAttr<T>>(shared_from_this());
     }
     template <typename Ttop_ = Ttop, typename Tmid_ = Tmid, typename Tval_ = Tval>
-    typename std::enable_if<(detail::is_stl_vector<Tmid_>::value || detail::is_stl_vector<Ttop_>::value) \
+    typename std::enable_if<(detail::is_stl_vector<Tmid_>::value || detail::is_stl_vector<Ttop_>::value)
             && !detail::is_stl_tuple<Tval_>::value
         , std::shared_ptr<ArgAttr<T>>>::type
     line_width(int at_least, int at_most = -1) {
@@ -931,7 +944,7 @@ protected:
             return "";
         }
         std::stringstream ss;
-        ss << "'" << type_traits<T>::name() << "'";
+        ss << "data type: '" << type_traits<T>::name() << "'";
         auto print_range = [&ss](unsigned at_least, unsigned at_most) {
             ss << "[" << at_least << "~";
             if (at_most == INT32_MAX) {
@@ -958,10 +971,10 @@ protected:
             }
         }
         if (has_default_value()) {
-            ss << "; default:" << to_string(get_default_value());
+            ss << ";\n  default: " << to_string(get_default_value());
         }
         if (has_implicit_value()) {
-            ss << "; implicit:" << to_string(get_implicit_value());
+            ss << ";\n implicit: " << to_string(get_implicit_value());
         }
         return ss.str();
     }
@@ -1172,7 +1185,7 @@ struct get_capacity {
     static int at_most(SmartMode smart_mode) {
         ArgParserImpl parser(nullptr, 0, smart_mode, nullptr);
         Tval arg_value;
-        cliargs_parse_by_parser(arg_value, parser, "");
+        cliargs_parse_custom(arg_value, parser);
         return parser.at_most();
     }
 };
@@ -1186,11 +1199,11 @@ struct DataParser {
             , std::function<const typename get_implicit_value_type<Tval>::type &()> get_implicit_value
             , const std::string &name = ""
             ) {
-        ArgParserImpl parser(argv, argc, smart_mode, context);
+        ArgParserImpl parser(argv, argc, smart_mode, context, name);
         if (at_least < 1) {
             parser.set_optional();
         }
-        cliargs_parse_by_parser(value, parser, name);
+        cliargs_parse_custom(value, parser);
         auto ret = parser.submit(name);
         if (ret.vali || at_least > 0) {
             err_list.splice(err_list.end(), parser.errors());
@@ -1531,12 +1544,12 @@ std::string ArgDataT<T>::finish() {
 } // detail
 
 template <typename T>
-void cliargs_parse_by_parser(T &var, ArgParser &parser, const std::string &name) {
+void cliargs_parse_custom(T &var, ArgParser &parser) {
     if (detail::is_cli_custom<T>::value) {
         static_cast<detail::ArgParserImpl &>(parser).set_as_unknown_type();
         return;
     }
-    parser.assign(var, name);
+    parser.assign(var, "");
 }
 
 template <typename T>
@@ -1569,8 +1582,8 @@ const std::string &type_traits<T>::name() {
     static std::string s_name = []() -> std::string {
         detail::ArgParserImpl parser(nullptr, 0, SmartMode::Gnu, nullptr);
         T arg_value;
-        cliargs_parse_by_parser(arg_value, parser, "");
-        return parser.type_name();
+        cliargs_parse_custom(arg_value, parser);
+        return parser.to_string<T>();
     }();
     return s_name;
 }
@@ -1583,35 +1596,29 @@ struct type_traits<std::tuple<Targs...>> {
     }
 };
 
-ArgParser::ArgParser(char *argv[], int argc, SmartMode smart_mode, void *context)
+ArgParser::ArgParser(char *argv[], int argc, SmartMode smart_mode, void *context, std::string parent_name)
         : _argc(argc), _argv(argv), _smart_mode(smart_mode), _context(context)
+        , _parent_name(std::move(parent_name))
         , _argi(0), _vali(0), _is_optional(false), _at_least(0), _at_most(0)
         , _is_terminated(false), _is_serializing(false) {
 }
 void ArgParser::domain_begin(std::string type_name
         , std::string member_name_prefix
         , std::string member_name_suffix) {
-    _name_stack.push_back({std::move(type_name)
+    _name_traits = {std::move(type_name)
         , std::move(member_name_prefix)
-        , std::move(member_name_suffix)});
-    if (_is_serializing) {
-        _ostream << concat_name("") << "{";
-    }
+        , std::move(member_name_suffix)};
 }
 void ArgParser::domain_end() {
-    _name_stack.pop_back();
-    if (_is_serializing) {
-        _ostream << "}";
-    }
 }
 template <typename T>
 bool ArgParser::assign(T &value, const std::string &name, T default_value) {
+    static const auto type_name = type_traits<T>::name();
+    _item_traits.emplace_back(ItemTraits{type_name, name});
     if (_is_serializing) {
-        _ostream << "." << name << "=" << to_string(value) << ", ";
+        _item_traits.rbegin()->item_value = to_string(value);
         return true;
     }
-    static const auto type_name = type_traits<T>::name();
-    _item_traits.emplace_back(std::make_pair(type_name, name));
     ++_at_most;
     char *psz = nullptr;
     if (_argi < _argc && _at_most <= _argc) {
@@ -1621,11 +1628,11 @@ bool ArgParser::assign(T &value, const std::string &name, T default_value) {
             psz = _argv[_argi];
         }
     }
-    if (!_is_terminated && psz != nullptr && _at_most <= _argc                                              \
-            && (psz[0] != '-'                                                         /*normal string*/     \
-                || detail::is_numeric(psz + 1)                                        /*negative numberic*/ \
-                || (_smart_mode == SmartMode::Gnu && detail::is_cli_string<T>::value) /*force assigning*/   \
-                || (_smart_mode == SmartMode::Eof && (psz[1] != '-' || psz[2]))       /*stop at end: '--'*/ \
+    if (!_is_terminated && psz != nullptr && _at_most <= _argc
+            && (psz[0] != '-'                                                         /*normal string*/
+                || detail::is_numeric(psz + 1)                                        /*negative numberic*/
+                || (_smart_mode == SmartMode::Gnu && detail::is_cli_string<T>::value) /*force assigning*/
+                || (_smart_mode == SmartMode::Eof && (psz[1] != '-' || psz[2]))       /*stop at end: '--'*/
             )) {
         ++_argi;
     } else {
@@ -1634,10 +1641,8 @@ bool ArgParser::assign(T &value, const std::string &name, T default_value) {
             value = std::move(default_value);
         } else {
             std::stringstream ss;
-            ss << "a(n) '" << type_name << "' value is required";
-            if (!name.empty()) {
-                ss << " as '" << concat_name(name) << "'";
-            }
+            ss << "a(n) '" << type_name << "' value is required"
+               << " as '" << concat_name(name) << "'";
             _err_list.emplace_back(ss.str());
         }
         return false;
@@ -1669,24 +1674,17 @@ void *ArgParser::get_context() const {
     return _context;
 }
 std::string ArgParser::concat_name(const std::string &name) const {
-    if (_name_stack.empty()) {
+    if (_parent_name.empty() && _name_traits.type_name.empty()) {
         return name;
     }
     std::stringstream ss;
-    auto it = _name_stack.begin();
-    ss << (*it)[0];
-    while (it !=  _name_stack.end()) {
-        auto it_next = it;
-        ++it_next;
-        if (it_next != _name_stack.end()) {
-            ss << (*it)[1] << (*it_next)[0] << (*it)[2];
-            ++it;
-        } else {
-            break;
-        }
+    if (!_parent_name.empty()) {
+        ss << _parent_name;
+    } else {
+        ss << _name_traits.type_name;
     }
     if (!name.empty()) {
-        ss << (*it)[1]  << name << (*it)[2];
+        ss << _name_traits.item_name_prefix  << name << _name_traits.item_name_suffix;
     }
     return ss.str();
 }
@@ -1965,11 +1963,12 @@ void Parser::add_arg(char flag, std::string name
     auto err_header = std::string("define[") + def_index + "]: ";
     bool is_ok = true;
     if (type_traits<T>::name().empty()) {
-        _err_list.emplace_back(err_header + "no suitable 'cliargs_parse_by_parser' function found for the custom data type.");
+        _err_list.emplace_back(err_header + "no suitable 'cliargs_parse_custom' function found for the custom data type.");
         is_ok = false;
     }
     if (name.empty()) {
         _err_list.emplace_back(err_header + "long name is required");
+        name = "<empty>";
         is_ok = false;
     }
     if (name == "-" || name == "--" || name.find(' ') != name.npos) {
@@ -2160,7 +2159,7 @@ void Parser::print_help(const Result *result
 
 Result Parser::parse(int argc, char *argv[], unsigned start_index) {
     if (!_err_list.empty()) {
-        print_help(nullptr);
+        std::cerr << "Error: there are defination errors!" << std::endl;
         return Result(this);
     }
     std::unordered_map<std::string, std::shared_ptr<detail::ArgDataI>> result_data;
@@ -2191,6 +2190,7 @@ Result Parser::parse(int argc, char *argv[], unsigned start_index) {
     while (i < argc) {
         auto p = argv[i];
         if (!p) {
+            ++i;
             continue;
         }
         ArgDesc *desc = nullptr;

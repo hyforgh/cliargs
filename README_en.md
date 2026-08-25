@@ -100,13 +100,13 @@ struct MyStruct {
 };
 ```
 
-### 2.2.1 Overloading Parse Functions `cliargs_parse_by_parser`
+### 2.2.1 Overloading Parse Functions `cliargs_parse_custom`
 
-After overloading this function, program users need to use a string array to assign values to the struct. Full Example
+After overloading this function, program users need to use a string array to assign values to the struct. [Full Example](examples/custom.cpp)
 
 ```c++
-void cliargs_parse_by_parser(MyStruct &obj, cliargs::ArgParser &parser, const std::string &name) {
-    parser.domain_begin(name.empty() ? "MyStruct" : name); // Tell ArgParser the struct's name
+void cliargs_parse_custom(MyStruct &obj, cliargs::ArgParser &parser) {
+    parser.domain_begin("MyStruct"); // Tell ArgParser the struct's name
     if (parser.assign(obj.name, "name")) { // MyStruct::name requires a string value
         parser.check(!obj.name.empty(), "invalid name: empty");
     }
@@ -371,7 +371,7 @@ parser.add_args()
 ```
 
 * If you declare your data type as a pointer type (char * or const char *), combine pointer types with STL containers, or embed pointers within a tuple, the pointer will directly point to the string passed by the program user to the main function.
-* If a pointer type is embedded within a struct and assigned using cliargs_parse_by_parser, the pointer will point to the string passed by the program user to the main function.
+* If a pointer type is embedded within a struct and assigned using cliargs_parse_custom, the pointer will point to the string passed by the program user to the main function.
 
 ## 4.3 About GNU Mode
 
