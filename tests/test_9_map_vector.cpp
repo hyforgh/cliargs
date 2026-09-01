@@ -4,17 +4,26 @@ typedef std::vector<float> Vector;
 typedef std::map<std::string, Vector> MapVector;
 
 TEST_CASE("map_vector") {
-    SECTION("appear-1") {
+    SECTION("key-1") {
         CLI_TEST_DEFINE_NORM_ARG((MapVector), (), "--arg_name", "key1", "5.12");
         CHECK(arg_value.valid());
         CHECK(arg_value.as<MapVector>().at("key1") == Vector{5.12});
     }
 
-    SECTION("appear-N") {
+    SECTION("key-N") {
         CLI_TEST_DEFINE_NORM_ARG((MapVector), (), "--arg_name", "key1", "5.12", "--arg_name", "key2", "1.1", "4.9");
         CHECK(arg_value.valid());
         auto &av = arg_value.as<MapVector>();
         CHECK(av.at("key1") == Vector{5.12});
+        CHECK(av.at("key2") == Vector{1.1, 4.9});
+    }
+
+    SECTION("key-N-append") {
+        CLI_TEST_DEFINE_NORM_ARG((MapVector), (),
+            "--arg_name", "key1", "5.12", "--arg_name", "key2", "1.1", "4.9", "--arg_name", "key1", "2.2", "4.5");
+        CHECK(arg_value.valid());
+        auto &av = arg_value.as<MapVector>();
+        CHECK(av.at("key1") == Vector{5.12, 2.2, 4.5});
         CHECK(av.at("key2") == Vector{1.1, 4.9});
     }
 
@@ -28,7 +37,7 @@ TEST_CASE("map_vector") {
         CLI_TEST_DEFINE_NORM_ARG((MapVector), (->line_width(2, 3)), "--arg_name", "key1", "5.12");
         CHECK(result.error());
         CHECK(cli_error_like(result.error_details(),
-            ".*a\\(n\\) 'float32' value is required as 'map\\[\"key1\"\\]\\[1\\]'"));
+            ".*a\\(n\\) 'float32' value is required as 'map.*\\[\"key1\"\\]\\[1\\]'"));
     }
 
     SECTION("line_width-limit-too-many") {
@@ -52,7 +61,9 @@ TEST_CASE("map_vector") {
     }
 
     SECTION("implicit-used") {
-        CLI_TEST_DEFINE_NORM_ARG((MapVector), (->implicit_value({5.12})), "--arg_name", "key1", "--arg_name", "key2");
+        CLI_TEST_DEFINE_NORM_ARG((MapVector)
+            , (->line_width(0)->implicit_value({5.12}))
+            , "--arg_name", "key1", "--arg_name", "key2");
         CHECK(arg_value.valid());
         auto &av = arg_value.as<MapVector>();
         CHECK(av.at("key1") == Vector{5.12});
@@ -60,7 +71,9 @@ TEST_CASE("map_vector") {
     }
 
     SECTION("implicit-not-used") {
-        CLI_TEST_DEFINE_NORM_ARG((MapVector), (->implicit_value({5.12})), "--arg_name", "key1", "4.9", "--arg_name", "key2");
+        CLI_TEST_DEFINE_NORM_ARG((MapVector)
+            , (->line_width(0)->implicit_value({5.12}))
+            , "--arg_name", "key1", "4.9", "--arg_name", "key2");
         CHECK(arg_value.valid());
         auto &av = arg_value.as<MapVector>();
         CHECK(av.at("key1") == Vector{4.9});

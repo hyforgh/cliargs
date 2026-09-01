@@ -5,12 +5,8 @@ struct MyStruct {
     float gain;
     int flag;
 };
-std::ostream &operator << (std::ostream &os, const MyStruct &obj) {
-    os << "{.name=\"" << obj.name << "\", .gain=" << obj.gain << ", .flag=" << obj.flag << "}";
-    return os;
-}
-void cliargs_parse_by_parser(MyStruct &obj, cliargs::ArgParser &parser, const std::string &name) {
-    parser.domain_begin(name.empty() ? "MyStruct" : name);
+void cliargs_parse_custom(MyStruct &obj, cliargs::ArgParser &parser) {
+    parser.domain_begin("MyStruct");
     if (parser.assign(obj.name, "name")) {
         parser.check(!obj.name.empty(), "an empty name");
     }
@@ -41,7 +37,7 @@ TEST_CASE("struct_parser") {
         CLI_TEST_DEFINE_NORM_ARG((MyStruct), (), "--arg_name", "data");
         CHECK(result.error());
         CHECK(cli_error_like(result.error_details(),
-            ".*a\\(n\\) 'float32' value is required as 'MyStruct\\.gain'"));
+            ".*a\\(n\\) 'float32' value is required as '.*\\.gain'"));
     }
 
     SECTION("single-too-many") {
@@ -125,7 +121,7 @@ TEST_CASE("struct_parser") {
             , "--arg_name", "data", "1.5", "2", "--arg_name", "bin");
         CHECK(result.error());
         CHECK(cli_error_like(result.error_details(),
-            ".*a\\(n\\) 'float32' value is required as 'vector\\[1\\].gain'"));
+            ".*a\\(n\\) 'float32' value is required as 'vector.*\\[1\\].gain'"));
     }
 
     SECTION("vector-too-many") {
@@ -168,7 +164,7 @@ TEST_CASE("struct_parser") {
             , "--arg_name", "key1", "data", "1.5", "2", "--arg_name", "key2", "bin");
         CHECK(result.error());
         CHECK(cli_error_like(result.error_details(),
-            ".*a\\(n\\) 'float32' value is required as 'map\\[\"key2\"\\]\\.gain'"));
+            ".*a\\(n\\) 'float32' value is required as 'map.*\\[\"key2\"\\]\\.gain'"));
     }
 
     SECTION("map-too-many") {

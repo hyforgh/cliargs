@@ -42,6 +42,14 @@ TEST_CASE("vector_numeric") {
             ".*too many appearances \\['9'\\]"));
     }
 
+    SECTION("data_count-limit-too-many") {
+        CLI_TEST_DEFINE_NORM_ARG((std::vector<float>), (->data_count(2, 3))
+            , "--arg_name", "5.12", "1.1", "5.0", "9");
+        CHECK(result.error());
+        CHECK(cli_error_like(result.error_details(),
+            ".*too many value '9'"));
+    }
+
     SECTION("default-used") {
         CLI_TEST_DEFINE_NORM_ARG((std::vector<float>), (->default_value({5.12, 1.1})));
         CHECK(arg_value.valid());

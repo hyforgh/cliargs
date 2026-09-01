@@ -8,14 +8,9 @@ struct MyStruct {
     uint64_t offset;
     uint64_t size;
 };
-// overload oerator << for printing default-value and enum-value in help
-std::ostream &operator << (std::ostream &os, const MyStruct &obj) {
-    os << "{.name=" << obj.name << ", .offset=" << obj.offset << ", .size=" << obj.size << "}";
-    return os;
-}
 
-void cliargs_parse_by_parser(MyStruct &obj, cliargs::ArgParser &parser, const std::string &name = "MyStruct") {
-    parser.domain_begin(name);
+void cliargs_parse_custom(MyStruct &obj, cliargs::ArgParser &parser) {
+    parser.domain_begin("MyStruct");
     if (parser.assign(obj.name, "name")) { // MyStruct::name required a string value
         parser.check(!obj.name.empty(), "an empty string");
     }
@@ -55,7 +50,7 @@ int main(int argc, char *argv[]) {
         )
         ('u', "user", "An struct enum",
             cliargs::value<MyStruct>()
-            ->examine([](MyStruct &obj) -> bool { return obj.size > 0; }, "size should greater than 0")
+            ->examine([](MyStruct &obj) -> bool { return obj.offset % 4 == 0; }, "offset should be multile of 4")
         )
         ;
     // Parse
