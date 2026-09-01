@@ -444,8 +444,7 @@ struct to_string_t {
             , const std::string &delimiter, const std::string &gap
             , const char *prefix, const char *suffix
             ) {
-        return to_string(data, delimiter, gap, prefix, suffix
-            , prefix, suffix);
+        return to_string(data, delimiter, gap, prefix, suffix);
     }
 };
 template <typename Tval>
@@ -954,7 +953,7 @@ protected:
         ss << type_traits<T>::name();
         auto print_range = [&ss](unsigned at_least, unsigned at_most) {
             ss << "[" << at_least << "~";
-            if (at_most == INT32_MAX) {
+            if (at_most == std::numeric_limits<int>::max()) {
                 ss << "N";
             } else {
                 ss << at_most;
