@@ -7,13 +7,13 @@ include(CMakePackageConfigHelpers)
 
 function(cliargs_get_version out_arg_version)
     file(STRINGS "${CMAKE_CURRENT_SOURCE_DIR}/include/cliargs.hpp" cliargs_version_define
-        REGEX "#define CLIARGS_VERSION_(MAJOR|MINOR|PATCH)")
+        REGEX "constexpr +unsigned +CLIARGS_VERSION_(MAJOR|MINOR|PATCH) *= *")
     foreach(ver ${cliargs_version_define})
-        if(ver MATCHES "#define CLIARGS_VERSION_(MAJOR|MINOR|PATCH) +([^ ]+)$")
+        if(ver MATCHES "constexpr +unsigned +CLIARGS_VERSION_(MAJOR|MINOR|PATCH) *= *(.+);$")
             set(CLIARGS_VERSION_${CMAKE_MATCH_1} "${CMAKE_MATCH_2}" CACHE INTERNAL "")
         endif()
     endforeach()
-    set(VERSION ${CLIARGS_VERSION_MAJOR}.${CLIARGS_VERSION_MINOR}.${CLIARGS_VERSION_PATCH})
+set(VERSION ${CLIARGS_VERSION_MAJOR}.${CLIARGS_VERSION_MINOR}.${CLIARGS_VERSION_PATCH})
 
     if (CMAKE_VERSION VERSION_GREATER 3.15 OR CMAKE_VERSION VERSION_EQUAL 3.15)
         message(DEBUG "cliargs version ${VERSION}")
